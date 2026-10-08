@@ -1,0 +1,176 @@
+:root {
+  --chat-wallpaper-image: none;
+  --chat-gradient-angle: 135deg;
+  --chat-primary-position: 88% 6%;
+  --chat-primary-size: 82% 68%;
+  --chat-secondary-position: 8% 92%;
+  --chat-secondary-size: 78% 64%;
+  --chat-neutral-position: 12% 18%;
+  --chat-neutral-size: 70% 54%;
+}
+
+:root[data-chat-wallpaper-gradient='aurora'] {
+  --chat-gradient-angle: 135deg;
+  --chat-primary-position: 88% 6%;
+  --chat-primary-size: 82% 68%;
+  --chat-secondary-position: 8% 92%;
+  --chat-secondary-size: 78% 64%;
+  --chat-neutral-position: 12% 18%;
+  --chat-neutral-size: 70% 54%;
+}
+
+:root[data-chat-wallpaper-gradient='bloom'] {
+  --chat-gradient-angle: 25deg;
+  --chat-primary-position: 14% 8%;
+  --chat-primary-size: 76% 62%;
+  --chat-secondary-position: 88% 84%;
+  --chat-secondary-size: 86% 72%;
+  --chat-neutral-position: 74% 16%;
+  --chat-neutral-size: 66% 52%;
+}
+
+:root[data-chat-wallpaper-gradient='breeze'] {
+  --chat-gradient-angle: 165deg;
+  --chat-primary-position: 96% 28%;
+  --chat-primary-size: 88% 58%;
+  --chat-secondary-position: 4% 74%;
+  --chat-secondary-size: 82% 62%;
+  --chat-neutral-position: 50% 0%;
+  --chat-neutral-size: 72% 48%;
+}
+
+:root[data-chat-wallpaper-gradient='lagoon'] {
+  --chat-gradient-angle: 120deg;
+  --chat-primary-position: 18% 86%;
+  --chat-primary-size: 88% 70%;
+  --chat-secondary-position: 86% 14%;
+  --chat-secondary-size: 76% 66%;
+  --chat-neutral-position: 48% 48%;
+  --chat-neutral-size: 62% 44%;
+}
+
+:root[data-chat-wallpaper-gradient='meadow'] {
+  --chat-gradient-angle: 45deg;
+  --chat-primary-position: 8% 32%;
+  --chat-primary-size: 82% 64%;
+  --chat-secondary-position: 92% 72%;
+  --chat-secondary-size: 84% 68%;
+  --chat-neutral-position: 56% 0%;
+  --chat-neutral-size: 78% 52%;
+}
+
+:root[data-chat-wallpaper-gradient='sunrise'] {
+  --chat-gradient-angle: 0deg;
+  --chat-primary-position: 50% 108%;
+  --chat-primary-size: 110% 76%;
+  --chat-secondary-position: 98% 8%;
+  --chat-secondary-size: 76% 58%;
+  --chat-neutral-position: 2% 8%;
+  --chat-neutral-size: 72% 54%;
+}
+
+.chat-wallpaper {
+  --chat-wallpaper-base: color-mix(in oklch, var(--ui-color-neutral-50) 92%, white);
+  --chat-wallpaper-pattern-start: color-mix(
+    in oklch,
+    var(--ui-color-primary-700) 76%,
+    var(--ui-color-neutral-700)
+  );
+  --chat-wallpaper-pattern-end: color-mix(
+    in oklch,
+    var(--ui-color-primary-300) 68%,
+    var(--ui-color-neutral-500)
+  );
+  --chat-wallpaper-pattern-primary: color-mix(
+    in oklch,
+    var(--ui-color-primary-500) 86%,
+    white
+  );
+  --chat-wallpaper-pattern-secondary: color-mix(
+    in oklch,
+    var(--ui-color-primary-300) 72%,
+    var(--ui-color-neutral-400)
+  );
+  --chat-wallpaper-pattern-neutral: color-mix(
+    in oklch,
+    var(--ui-color-neutral-700) 72%,
+    var(--ui-color-primary-600)
+  );
+  --chat-wallpaper-pattern-opacity: 0.24;
+
+  isolation: isolate;
+  background-color: var(--chat-wallpaper-base);
+  background-image: none;
+}
+
+.chat-wallpaper::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-image: radial-gradient(
+    ellipse var(--chat-primary-size) at var(--chat-primary-position),
+    var(--chat-wallpaper-pattern-primary),
+    transparent 72%
+  ),
+  radial-gradient(
+    ellipse var(--chat-secondary-size) at var(--chat-secondary-position),
+    var(--chat-wallpaper-pattern-secondary),
+    transparent 74%
+  ),
+  radial-gradient(
+    ellipse var(--chat-neutral-size) at var(--chat-neutral-position),
+    var(--chat-wallpaper-pattern-neutral),
+    transparent 76%
+  ),
+  linear-gradient(
+    var(--chat-gradient-angle),
+    var(--chat-wallpaper-pattern-start),
+    var(--chat-wallpaper-pattern-end)
+  );
+  content: '';
+  opacity: var(--chat-wallpaper-pattern-opacity);
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  mask-image: var(--chat-wallpaper-image);
+  mask-repeat: repeat;
+  mask-position: center top;
+  mask-size: 402px 692px;
+  -webkit-mask-image: var(--chat-wallpaper-image);
+  -webkit-mask-repeat: repeat;
+  -webkit-mask-position: center top;
+  -webkit-mask-size: 402px 692px;
+}
+
+.dark .chat-wallpaper {
+  --chat-wallpaper-base: color-mix(in oklch, var(--ui-color-neutral-950) 94%, black);
+  --chat-wallpaper-pattern-start: color-mix(
+    in oklch,
+    var(--ui-color-primary-300) 74%,
+    var(--ui-color-neutral-100)
+  );
+  --chat-wallpaper-pattern-end: color-mix(
+    in oklch,
+    var(--ui-color-primary-600) 68%,
+    var(--ui-color-neutral-300)
+  );
+  --chat-wallpaper-pattern-primary: color-mix(
+    in oklch,
+    var(--ui-color-primary-200) 88%,
+    white
+  );
+  --chat-wallpaper-pattern-secondary: color-mix(
+    in oklch,
+    var(--ui-color-primary-400) 78%,
+    var(--ui-color-neutral-100)
+  );
+  --chat-wallpaper-pattern-neutral: color-mix(
+    in oklch,
+    var(--ui-color-neutral-200) 76%,
+    var(--ui-color-primary-300)
+  );
+  --chat-wallpaper-pattern-opacity: 0.22;
+}
+
+.dark .chat-wallpaper::before {
+  mix-blend-mode: screen;
+}

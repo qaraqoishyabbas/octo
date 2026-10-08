@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Octo">
+  <rect width="512" height="512" rx="112" fill="#7c3aed"/>
+  <circle cx="256" cy="256" r="168" fill="#fff"/>
+  <circle cx="256" cy="256" r="104" fill="#7c3aed"/>
+  <circle cx="256" cy="256" r="48" fill="#fff"/>
+  <path fill="#7c3aed" d="M252 84h8v96h-8zM252 332h8v96h-8zM84 252h96v8H84zM332 252h96v8h-96z"/>
+</svg>
