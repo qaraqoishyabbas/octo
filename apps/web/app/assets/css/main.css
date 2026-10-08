@@ -1,0 +1,15 @@
+@import 'tailwindcss';
+@import '@nuxt/ui';
+@import './theme.css';
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@theme static {
+  --font-sans: 'Public Sans', sans-serif;
+}

@@ -1,0 +1,42 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@emoji-mart/data": "^1.2.1",
+    "@nuxt/image": "^2.0.0",
+    "@nuxtjs/i18n": "^10.3.0",
+    "@pinia/nuxt": "^0.11.3",
+    "@tiptap/extension-mention": "^3.22.5",
+    "@tiptap/extension-placeholder": "^3.22.5",
+    "@tiptap/starter-kit": "^3.22.5",
+    "@tiptap/suggestion": "^3.22.5",
+    "@tiptap/vue-3": "^3.22.5",
+    "@vite-pwa/nuxt": "^1.1.1",
+    "ai": "^6.0.191",
+    "dayjs-nuxt": "^2.1.11",
+    "emoji-mart": "^5.6.0",
+    "nuxt": "^4.4.2",
+    "nuxt-security": "^2.5.1",
+    "pinia": "^3.0.4",
+    "qr-code-styling": "^1.9.2",
+    "vue": "^3.5.32",
+    "vue-router": "^5.0.4"
+  },
+  "devDependencies": {
+    "@iconify-json/lucide": "^1.2.105",
+    "@iconify-json/ph": "^1.2.2",
+    "@nuxt/ui": "^4.7.0",
+    "prettier": "^3.9.7",
+    "prettier-plugin-organize-attributes": "^1.0.0",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "tailwindcss": "^4.2.4",
+    "typescript": "^5.9.3"
+  }
+}

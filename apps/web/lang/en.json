@@ -1,0 +1,185 @@
+{
+  "common": {
+    "appName": "Octo",
+    "loading": "Loading...",
+    "loadingShort": "Loading",
+    "contactsEmpty": "No contacts",
+    "contactsCount": "{count} contacts",
+    "errorTitle": "Oops, something is wrong!",
+    "errorDescription": "An unexpected error occurred. Please try again later.",
+    "confirmAction": "Confirm action",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "logout": "Log out",
+    "logoutAccount": "Log out of account",
+    "logoutTitle": "Log out?",
+    "logoutDescription": "Are you sure you want to end the session?",
+    "done": "Done",
+    "create": "Create",
+    "next": "Next",
+    "notSet": "Set",
+    "unknown": "Unknown",
+    "title": "Title",
+    "descriptionOptional": "Description (optional)"
+  },
+  "app": {
+    "homeTitle": "Home"
+  },
+  "error": {
+    "notFound": "The page you are looking for does not exist.",
+    "server": "Something went wrong on our side. Please try again later.",
+    "default": "Something went wrong. Please try again later."
+  },
+  "login": {
+    "title": "Sign in",
+    "heading": "Sign in to your account",
+    "subtitle": "Your AI-powered workspace.",
+    "email": "Email",
+    "password": "Password",
+    "rememberTooltip": "for 1 month",
+    "remember": "Remember me",
+    "submit": "Sign in",
+    "terms": "By continuing, you confirm that you understand and agree to the Terms of Use and Privacy Policy."
+  },
+  "home": {
+    "empty": "Your dialogs will appear here"
+  },
+  "dialogs": {
+    "title": "Home",
+    "refreshing": "Refreshing...",
+    "notFound": "Dialog not found",
+    "empty": "No dialogs",
+    "muted": "Muted dialog",
+    "pinned": "Pinned dialog",
+    "mentioned": "You were mentioned",
+    "unread": "Unread messages"
+  },
+  "menu": {
+    "contacts": "Contacts",
+    "createGroup": "Create group",
+    "createChannel": "Create channel",
+    "services": "Services",
+    "settings": "Settings",
+    "darkTheme": "Dark theme",
+    "lightTheme": "Light theme"
+  },
+  "services": {
+    "title": "Services",
+    "modalTitle": "Our Services",
+    "description": "List of available services",
+    "shop": "Shop",
+    "polls": "Polls",
+    "channels": "Channels",
+    "help": "Help",
+    "roadmap": "Roadmap"
+  },
+  "setting": {
+    "title": "Settings",
+    "description": "Main application settings",
+    "editInfo": "Edit information",
+    "devices": "Devices",
+    "appearance": "Appearance",
+    "other": "Other settings",
+    "sendByEnter": "Send with Enter",
+    "language": {
+      "title": "Language",
+      "description": "Choose interface language",
+      "interface": "Interface language"
+    },
+    "menu": {
+      "account": "Edit information"
+    }
+  },
+  "account": {
+    "title": "Edit profile",
+    "description": "Edit personal profile",
+    "updated": "Account details were updated successfully",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "profileHint": "Please add a name and photo. This name is shown in contact lists and comments.",
+    "bio": "About me",
+    "bioPlaceholder": "A little about yourself (optional)",
+    "bioHint": "Tell a little about yourself, for example: age, occupation, or city. Example: 23 years old, designer from Almaty (Kazakhstan).",
+    "email": "Email",
+    "username": "Username",
+    "birthday": "Birthday",
+    "phone": "Phone number"
+  },
+  "accountShare": {
+    "title": "Share profile",
+    "description": "Profile QR code",
+    "qrCode": "QR code",
+    "share": "Share",
+    "copied": "Link copied",
+    "failed": "Could not share the link"
+  },
+  "upload": {
+    "removePhoto": "Remove photo",
+    "fileTooLarge": "File is too large.",
+    "somethingWrong": "Something went wrong"
+  },
+  "device": {
+    "title": "Devices",
+    "description": "Device management",
+    "sessionTitle": "Session",
+    "sessionDescription": "Session information",
+    "about": "About device",
+    "disconnectSessions": "End sessions",
+    "disconnectOthersDescription": "Are you sure you want to end all sessions except the current one?",
+    "disconnectSessionDescription": "Are you sure you want to end this session?",
+    "disconnect": "End",
+    "intro": "All devices signed in to your account are listed here. You can sign out of each device individually or from all devices at once.",
+    "securityHint": "If you see an unfamiliar device in the list, immediately sign out on that device and change your account password.",
+    "current": "Current device",
+    "disconnectOthers": "End all other sessions",
+    "disconnectOthersHint": "Sign out on all devices except this one. You will need to sign in again on every device where you were signed in.",
+    "activeSessions": "Active sessions",
+    "deviceInfo": "Device information",
+    "application": "Application",
+    "location": "Location",
+    "disconnectSession": "End session",
+    "online": "Online"
+  },
+  "theme": {
+    "title": "Appearance",
+    "description": "Edit application appearance",
+    "dark": "Switch to dark theme",
+    "light": "Switch to light theme",
+    "system": "Device theme (system)",
+    "color": "Color theme",
+    "radius": "Block corners",
+    "resetTitle": "Reset settings",
+    "resetDescription": "Are you sure you want to reset theme settings?",
+    "reset": "Reset",
+    "restoreDefault": "Restore default theme",
+    "exampleDate": "December 3",
+    "exampleMessageOut": "Hi, how is the report going? Can you finish it by lunch?",
+    "exampleMessageIn": "Hi! Almost done, just a couple of items left."
+  },
+  "users": {
+    "title": "Contacts",
+    "description": "Employee search",
+    "searchPlaceholder": "Search employee"
+  },
+  "group": {
+    "title": "Create group",
+    "description": "Group creation page",
+    "searchPlaceholder": "Who would you like to add to the group?",
+    "selectedUsers": "Selected members: {count}",
+    "membersCount": "Members: {count}",
+    "createError": "Error creating group"
+  },
+  "channel": {
+    "title": "Create channel",
+    "description": "Channel creation page",
+    "helper": "You can add an optional channel description.",
+    "createError": "Error creating channel"
+  },
+  "roadmap": {
+    "title": "Roadmap",
+    "description": "Product task plan",
+    "backlog": "Backlog",
+    "inProgress": "In Progress",
+    "done": "Done"
+  }
+}
