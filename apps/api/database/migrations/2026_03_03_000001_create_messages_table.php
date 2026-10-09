@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
   public function up(): void {
     Schema::create('messages', function (Blueprint $table) {
-      $table->uuid('id')->primary();
+      $table->uuid('id');
+      // Register the primary key before the self-reference for PostgreSQL.
+      $table->primary('id');
       $table->foreignUuid('dialog_id')->constrained('dialogs')->cascadeOnDelete();
       $table->foreignUuid('sender_id')->nullable()->constrained('users')->cascadeOnDelete();
       $table->foreignUuid('reply_to_id')
