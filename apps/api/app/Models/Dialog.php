@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 
 class Dialog extends Model {
   use HasFactory, HasUuids;
@@ -114,6 +115,16 @@ class Dialog extends Model {
   }
 
   public function message(): HasOne {
-    return $this->hasOne(Message::class, 'dialog_id')->latestOfMany('created_at');
+    // latestOfMany aggregates the UUID primary key, which PostgreSQL cannot do.
+    return $this->hasOne(Message::class, 'dialog_id')
+      ->where('messages.id', function (QueryBuilder $query) {
+        $query->select('latest_message.id')
+          ->from('messages as latest_message')
+          ->whereColumn('latest_message.dialog_id', 'messages.dialog_id')
+          ->whereNull('latest_message.deleted_at')
+          ->orderByDesc('latest_message.created_at')
+          ->orderByDesc('latest_message.id')
+          ->limit(1);
+      });
   }
 }
