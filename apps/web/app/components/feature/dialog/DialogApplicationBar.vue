@@ -244,39 +244,35 @@ const items = computed<DropdownMenuItem[][]>(() => {
 <template>
   <div class="sticky top-0 right-0 left-0 z-20" data-dialog-application-bar>
     <div class="via-default/80 from-default bg-gradient-to-b to-transparent">
-      <div class="flex justify-between gap-1.5 px-4 py-2">
+      <div class="flex gap-1.5 px-4 py-2">
         <div class="bg-elevated flex rounded-md p-0.5 shadow-lg">
           <UButton color="neutral" icon="i-ph-caret-left-bold" size="xl" variant="soft" to="/" />
         </div>
-        <div class="bg-elevated flex rounded-md p-0.5 shadow-lg">
+        <div class="bg-elevated flex w-full rounded-md p-0.5 shadow-lg">
           <div
-            class="hover:bg-accented/75 cursor-pointer rounded-md px-4 text-center"
+            class="hover:bg-accented/75 flex w-full cursor-pointer gap-2 rounded-md"
             @click="openProfile"
           >
-            <div class="text-md line-clamp-1 space-x-0.5 font-semibold">
-              <span class="truncate wrap-anywhere whitespace-pre-line">
-                {{ dialog.current?.title }}
-              </span>
-            </div>
+            <UAvatar
+              class="cursor-pointer shadow-lg"
+              size="xl"
+              :alt="dialog.current?.title"
+              :src="$storage(dialog.current?.avatar)"
+            />
+            <div>
+              <div class="text-md line-clamp-1 space-x-0.5 font-semibold">
+                <span class="truncate wrap-anywhere whitespace-pre-line">
+                  {{ dialog.current?.title }}
+                </span>
+              </div>
 
-            <div class="text-muted line-clamp-1 truncate text-xs font-normal">
-              <span :class="{ 'text-primary': dialogAudienceIsPrimary }">
-                {{ dialogAudienceText }}
-              </span>
+              <div class="text-muted line-clamp-1 truncate text-xs font-normal">
+                <span :class="{ 'text-primary': dialogAudienceIsPrimary }">
+                  {{ dialogAudienceText }}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="p-0.5">
-          <UAvatar
-            class="cursor-pointer shadow-lg"
-            size="xl"
-            :alt="dialog.current?.title"
-            :src="$storage(dialog.current?.avatar)"
-            :class="{
-              'rounded-[0.75rem]': dialog.current?.type === 'G' || dialog.current?.type === 'C',
-            }"
-            @click="openProfile"
-          />
         </div>
       </div>
       <DialogApplicationBarSearch v-model="dialog.searchOpen" />
