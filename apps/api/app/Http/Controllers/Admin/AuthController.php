@@ -17,17 +17,22 @@ class AuthController extends Controller {
 
   public function store(Request $request): RedirectResponse {
     $credentials = $request->validate([
-      'email' => ['required', 'email'],
+      'username' => ['required_without:email', 'nullable', 'string'],
+      'email' => ['required_without:username', 'nullable', 'email'],
       'password' => ['required', 'string'],
       'remember' => ['nullable', 'boolean'],
     ]);
 
     $remember = (bool)($credentials['remember'] ?? false);
-    unset($credentials['remember']);
+    $identityField = $request->filled('username') ? 'username' : 'email';
+    $credentials = [
+      $identityField => $credentials[$identityField],
+      'password' => $credentials['password'],
+    ];
 
     if (!Auth::attempt($credentials, $remember)) {
       throw ValidationException::withMessages([
-        'email' => __('These credentials do not match our records.'),
+        $identityField => __('These credentials do not match our records.'),
       ]);
     }
 

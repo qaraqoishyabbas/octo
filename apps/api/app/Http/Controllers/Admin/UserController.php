@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -51,9 +52,16 @@ class UserController extends Controller {
   }
 
   public function store(Request $request): RedirectResponse {
-    User::query()->create($this->validated($request));
+    $data = $this->validated($request);
+    $data['email'] = $data['email'] ?? Str::uuid() . '@example.invalid';
+    $data['first_name'] = $data['first_name'] ?? $data['username'];
+    User::query()->create($data);
 
-    return back()->with('success', 'User created.');
+    return redirect()->route('web.users.index')->with('success', 'Пользователь создан.');
+  }
+
+  public function create(): Response {
+    return Inertia::render('Users/Create');
   }
 
   public function update(Request $request, User $user): RedirectResponse {
@@ -79,11 +87,15 @@ class UserController extends Controller {
       'first_name' => ['nullable', 'string', 'max:255'],
       'last_name' => ['nullable', 'string', 'max:255'],
       'bio' => ['nullable', 'string', 'max:1000'],
-      'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user?->id)],
+      'email' => [$user ? 'required' : 'nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user?->id)],
       'username' => ['required', 'string', 'max:255', Rule::unique('users', 'username')->ignore($user?->id)],
       'birth_date' => ['nullable', 'date'],
       'password' => [$user ? 'nullable' : 'required', 'string', 'min:8'],
     ];
+
+    if (!$user && $request->has('password_confirmation')) {
+      $rules['password'][] = 'confirmed';
+    }
 
     $validated = $request->validate($rules);
 

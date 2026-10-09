@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
 const form = useForm({
-  email: "",
+  username: "",
   password: "",
   remember: false,
 });
@@ -63,22 +63,22 @@ function submit() {
         <CardHeader>
           <CardTitle>Welcome back</CardTitle>
           <CardDescription
-            >Enter your email to sign in to your workspace.</CardDescription
+            >Введите логин для входа в админку.</CardDescription
           >
         </CardHeader>
         <CardContent>
           <form class="space-y-4" @submit.prevent="submit">
             <div class="grid gap-2">
-              <Label for="email">Email</Label>
+              <Label for="username">Логин</Label>
               <Input
-                id="email"
-                v-model="form.email"
-                type="email"
-                autocomplete="email"
-                placeholder="name@example.com"
+                id="username"
+                v-model="form.username"
+                type="text"
+                autocomplete="username"
+                placeholder="admin"
               />
-              <p v-if="form.errors.email" class="text-sm text-destructive">
-                {{ form.errors.email }}
+              <p v-if="form.errors.username" class="text-sm text-destructive">
+                {{ form.errors.username }}
               </p>
             </div>
 
@@ -108,7 +108,7 @@ function submit() {
             </label>
 
             <Button class="w-full" :disabled="form.processing">
-              {{ form.processing ? "Signing in..." : "Continue with email" }}
+              {{ form.processing ? "Вход..." : "Войти" }}
             </Button>
 
             <div class="flex items-center gap-3">

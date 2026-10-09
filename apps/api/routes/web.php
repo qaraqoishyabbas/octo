@@ -19,6 +19,7 @@ Route::middleware('auth')->group(function () {
   Route::post('/logout', [AuthController::class, 'destroy'])->name('web.logout');
 
   Route::get('/users', [UserController::class, 'index'])->name('web.users.index');
+  Route::get('/users/create', [UserController::class, 'create'])->name('web.users.create');
   Route::post('/users', [UserController::class, 'store'])->name('web.users.store');
   Route::put('/users/{user}', [UserController::class, 'update'])->name('web.users.update');
   Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('web.users.destroy');

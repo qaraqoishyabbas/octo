@@ -18,4 +18,8 @@ if [ "${RUN_MIGRATIONS:-0}" = "1" ]; then
     php artisan migrate --force
 fi
 
+if [ "${RUN_SEEDERS:-0}" = "1" ]; then
+    php artisan db:seed --force
+fi
+
 exec "$@"

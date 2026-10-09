@@ -74,11 +74,6 @@ function resetForm() {
   editingUser.value = null;
 }
 
-function openCreateUserDialog() {
-  resetForm();
-  userDialogOpen.value = true;
-}
-
 function editUser(user) {
   editingUser.value = user;
   userDialogOpen.value = true;
@@ -132,9 +127,9 @@ function initials(user) {
           </p>
         </div>
 
-        <Button @click="openCreateUserDialog">
+        <Button :as="Link" href="/users/create">
           <Plus class="size-4" />
-          New user
+          Регистрация пользователя
         </Button>
       </div>
 
