@@ -26,6 +26,8 @@ Route::middleware('auth')->group(function () {
 
   Route::get('/notification-apps', [NotificationAppController::class, 'index'])->name('web.notification-apps.index');
   Route::post('/notification-apps', [NotificationAppController::class, 'store'])->name('web.notification-apps.store');
+  Route::post('/notification-apps/{app}/vapid-keys', [NotificationAppController::class, 'generateVapidKeys'])
+    ->middleware('throttle:10,1')->name('web.notification-apps.vapid-keys');
   Route::patch('/notification-apps/{app}', [NotificationAppController::class, 'update'])->name('web.notification-apps.update');
   Route::delete('/notification-apps/{app}', [NotificationAppController::class, 'destroy'])->name('web.notification-apps.destroy');
   Route::put('/notification-apps/{app}/credentials/{provider}', [NotificationAppController::class, 'credentials'])->name('web.notification-apps.credentials');

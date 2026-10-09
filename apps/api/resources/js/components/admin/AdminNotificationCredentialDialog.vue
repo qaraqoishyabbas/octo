@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { router, useForm } from "@inertiajs/vue3";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,9 @@ const props = defineProps({
 });
 const emit = defineEmits(["update:open"]);
 const provider = ref("webpush");
+const generating = ref(false);
+const generationError = ref("");
+let generationRequest = null;
 const form = useForm({
   subject: "",
   public_key: "",
@@ -37,9 +40,19 @@ const providers = computed(() => {
   return ["webpush"];
 });
 
+function resetGeneration() {
+  generationRequest?.abort();
+  generationRequest = null;
+  generating.value = false;
+  generationError.value = "";
+}
+
+onBeforeUnmount(resetGeneration);
+
 watch(
   () => [props.open, props.app],
   () => {
+    resetGeneration();
     provider.value = providers.value[0];
     form.reset();
     form.clearErrors();
@@ -48,16 +61,81 @@ watch(
 );
 
 watch(provider, () => {
+  resetGeneration();
   form.reset();
   form.clearErrors();
 });
+
+async function generateVapidKeys() {
+  if (
+    !props.app ||
+    !props.open ||
+    provider.value !== "webpush" ||
+    generating.value ||
+    form.processing
+  )
+    return;
+  const appId = props.app.id;
+  const request = new AbortController();
+  generationRequest = request;
+  generating.value = true;
+  generationError.value = "";
+
+  try {
+    const xsrf = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/)?.[1];
+    const response = await fetch(`/notification-apps/${appId}/vapid-keys`, {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      redirect: "error",
+      signal: request.signal,
+      headers: {
+        Accept: "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+        ...(xsrf ? { "X-XSRF-TOKEN": decodeURIComponent(xsrf) } : {}),
+      },
+    });
+    if (!response.ok) {
+      throw new Error(
+        response.status === 419
+          ? "Сессия истекла. Обновите страницу и попробуйте снова."
+          : "Не удалось создать VAPID-ключи. Попробуйте ещё раз.",
+      );
+    }
+    const keys = await response.json();
+    if (!keys.public_key || !keys.private_key)
+      throw new Error("Сервер не вернул VAPID-ключи.");
+    if (
+      generationRequest !== request ||
+      !props.open ||
+      props.app?.id !== appId ||
+      provider.value !== "webpush"
+    )
+      return;
+    form.public_key = keys.public_key;
+    form.private_key = keys.private_key;
+    form.clearErrors("public_key", "private_key");
+  } catch (error) {
+    if (generationRequest === request && error.name !== "AbortError") {
+      generationError.value =
+        error instanceof TypeError
+          ? "Не удалось связаться с сервером. Обновите страницу и попробуйте снова."
+          : error.message;
+    }
+  } finally {
+    if (generationRequest === request) {
+      generationRequest = null;
+      generating.value = false;
+    }
+  }
+}
 
 function configured(name) {
   return (props.app?.credentials || []).some((item) => item.provider === name);
 }
 
 function submit() {
-  if (!props.app) return;
+  if (!props.app || generating.value) return;
   form.put(`/notification-apps/${props.app.id}/credentials/${provider.value}`, {
     preserveScroll: true,
     onSuccess: () => {
@@ -117,6 +195,34 @@ function removeCredentials() {
         </div>
 
         <template v-if="provider === 'webpush'">
+          <div class="space-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              :disabled="generating || form.processing"
+              @click="generateVapidKeys"
+            >
+              {{ generating ? "Генерация…" : "Сгенерировать VAPID-ключи" }}
+            </Button>
+            <p class="text-sm text-muted-foreground">
+              Ключи появятся в полях ниже. Укажите subject и нажмите
+              «Сохранить», чтобы применить их.
+            </p>
+            <p
+              v-if="configured('webpush')"
+              class="text-sm text-muted-foreground"
+            >
+              После замены сохранённых VAPID-ключей пользователям потребуется
+              заново включить уведомления.
+            </p>
+            <p
+              v-if="generationError"
+              class="text-sm text-destructive"
+              role="alert"
+            >
+              {{ generationError }}
+            </p>
+          </div>
           <div class="grid gap-2">
             <Label for="notification-subject">VAPID subject</Label>
             <Input
@@ -242,7 +348,7 @@ function removeCredentials() {
         <Button
           type="submit"
           form="notification-credentials-form"
-          :disabled="form.processing"
+          :disabled="form.processing || generating"
         >
           {{ form.processing ? "Сохранение…" : "Сохранить" }}
         </Button>

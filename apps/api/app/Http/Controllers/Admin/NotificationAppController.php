@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\NotificationApp;
 use App\Services\NotificationService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Minishlink\WebPush\VAPID;
 
 class NotificationAppController extends Controller {
   public function index(): Response {
@@ -76,6 +78,19 @@ class NotificationAppController extends Controller {
     $app->credentials()->updateOrCreate(['provider' => $provider], ['credentials' => $data]);
 
     return back()->with('success', 'Credentials сохранены.');
+  }
+
+  public function generateVapidKeys(NotificationApp $app): JsonResponse {
+    if (!in_array('webpush', NotificationService::providersFor($app->platform), true)) {
+      throw ValidationException::withMessages(['provider' => 'VAPID доступен только для Web Push.']);
+    }
+
+    $keys = VAPID::createVapidKeys();
+
+    return response()->json([
+      'public_key' => $keys['publicKey'],
+      'private_key' => $keys['privateKey'],
+    ])->header('Cache-Control', 'no-store, private');
   }
 
   public function deleteCredentials(NotificationApp $app, string $provider): RedirectResponse {
