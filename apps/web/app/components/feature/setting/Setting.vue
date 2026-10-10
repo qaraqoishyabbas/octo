@@ -4,6 +4,7 @@ import {
   AccountShare,
   Device,
   SettingChatFolders,
+  SettingDataStorage,
   SettingGeneral,
   SettingLanguage,
   SettingNotifications,
@@ -59,7 +60,7 @@ const logout = () => {
       />
     </template>
   </AppBar>
-  <div class="space-y-4 px-2.5">
+  <div class="flex-1 space-y-4 px-2.5">
     <SettingUser />
     <div class="bg-elevated rounded-md">
       <UButton
@@ -134,13 +135,13 @@ const logout = () => {
       <UButton
         class="justify-start"
         block
-        disabled
         color="neutral"
         size="xl"
         variant="soft"
         icon="i-ph-database-bold"
         label="Данные и память"
         trailing-icon="i-ph-caret-right-bold"
+        @click="overlay.create(SettingDataStorage).open()"
       />
       <UButton
         class="justify-start"
