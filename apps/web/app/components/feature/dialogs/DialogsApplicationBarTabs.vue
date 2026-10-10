@@ -2,8 +2,9 @@
 import type { DialogFilter } from '~/stores/dialogs';
 
 const dialogs = useDialogsStore();
+const folders = useChatFoldersStore();
 
-const quickFilters = computed(() => dialogs.filterOptions);
+const quickFilters = computed(() => folders.visibleFilters);
 const activeFilter = computed({
   get: () => dialogs.activeFilter,
   set: (value) => dialogs.setFilter(value as DialogFilter),

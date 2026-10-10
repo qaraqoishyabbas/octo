@@ -3,6 +3,7 @@ import {
   Account,
   AccountShare,
   Device,
+  SettingChatFolders,
   SettingLanguage,
   SettingNotifications,
   Theme,
@@ -113,7 +114,7 @@ const logout = () => {
         variant="soft"
         icon="i-ph-folder-bold"
         label="Папки с чатами"
-        disabled
+        @click="overlay.create(SettingChatFolders).open()"
         trailing-icon="i-ph-caret-right-bold"
       />
     </div>

@@ -3,6 +3,7 @@ import { DialogsNewDialog } from '#components';
 
 const overlay = useOverlay();
 const dialogs = useDialogsStore();
+const folders = useChatFoldersStore();
 const websocket = useWebSocketStore();
 const emit = defineEmits<{ (e: 'title-click'): void }>();
 
@@ -31,7 +32,7 @@ const refreshDialogs = async () => {
       />
     </template>
     <template v-slot:bottom>
-      <div class="px-4 pb-2.5">
+      <div class="px-4 pb-2.5" v-if="folders.hasFolders">
         <div class="bg-elevated flex rounded-md">
           <DialogsApplicationBarTabs />
         </div>
