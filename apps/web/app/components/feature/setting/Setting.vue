@@ -102,17 +102,6 @@ const logout = () => {
         color="neutral"
         size="xl"
         variant="soft"
-        icon="i-ph-phone-call-bold"
-        label="Недавние звонки"
-        disabled
-        trailing-icon="i-ph-caret-right-bold"
-      />
-      <UButton
-        class="justify-start"
-        block
-        color="neutral"
-        size="xl"
-        variant="soft"
         icon="i-ph-devices-bold"
         label="Устройства"
         trailing-icon="i-ph-caret-right-bold"
@@ -141,17 +130,6 @@ const logout = () => {
         label="Уведомления и звук"
         trailing-icon="i-ph-caret-right-bold"
         @click="overlay.create(SettingNotifications).open()"
-      />
-      <UButton
-        class="justify-start"
-        block
-        disabled
-        color="neutral"
-        size="xl"
-        variant="soft"
-        icon="i-ph-lock-key-bold"
-        label="Конфиденциальность"
-        trailing-icon="i-ph-caret-right-bold"
       />
       <UButton
         class="justify-start"
