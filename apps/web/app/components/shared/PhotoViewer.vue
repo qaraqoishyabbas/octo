@@ -48,6 +48,26 @@ const zoom = ref(1);
 const rotation = ref(0);
 const pan = ref({ x: 0, y: 0 });
 const dragStart = ref<{ x: number; y: number; panX: number; panY: number } | null>(null);
+const swipeOffset = ref({ x: 0, y: 0 });
+const settling = ref(false);
+const dragging = ref(false);
+const viewportWidth = ref(0);
+let settleTimer: ReturnType<typeof setTimeout> | null = null;
+const slideDuration = 220;
+const slideStyle = computed(() => ({
+  transform: `translate3d(${swipeOffset.value.x}px, ${swipeOffset.value.y}px, 0)`,
+  transition: settling.value
+    ? `transform ${slideDuration}ms cubic-bezier(0.22, 1, 0.36, 1)`
+    : 'none',
+}));
+const adjacentMedia = computed(() => {
+  const total = mediaItems.value.length;
+  if (total <= 1) return [];
+  return ([-1, 1] as const).map((direction) => ({
+    direction,
+    item: mediaItems.value[(selectedIndex.value + direction + total) % total]!,
+  }));
+});
 const pointers = new Map<number, { x: number; y: number }>();
 let pinchStart: { distance: number; zoom: number } | null = null;
 let wasPinching = false;
@@ -58,7 +78,34 @@ const imageTransform = computed(
     `translate3d(${pan.value.x}px, ${pan.value.y}px, 0) scale(${zoom.value}) rotate(${rotation.value}deg)`,
 );
 
+function cancelSettling() {
+  if (settleTimer !== null) clearTimeout(settleTimer);
+  settleTimer = null;
+  settling.value = false;
+}
+
+function settleTo(offset: { x: number; y: number }, complete?: () => void) {
+  cancelSettling();
+  dragging.value = false;
+  if (import.meta.client && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    swipeOffset.value = { x: 0, y: 0 };
+    complete?.();
+    return;
+  }
+  settling.value = true;
+  swipeOffset.value = offset;
+  settleTimer = setTimeout(() => {
+    settleTimer = null;
+    settling.value = false;
+    if (complete) complete();
+    else swipeOffset.value = { x: 0, y: 0 };
+  }, slideDuration);
+}
+
 function resetView() {
+  cancelSettling();
+  dragging.value = false;
+  swipeOffset.value = { x: 0, y: 0 };
   zoom.value = 1;
   rotation.value = 0;
   pan.value = { x: 0, y: 0 };
@@ -69,14 +116,22 @@ function resetView() {
 }
 
 function closeViewer() {
+  resetView();
   open.value = false;
 }
 
 function navigateMedia(direction: 1 | -1) {
   const total = mediaItems.value.length;
-  if (total <= 0) return;
-
-  selectedIndex.value = (selectedIndex.value + direction + total) % total;
+  if (!open.value || total <= 1 || settling.value) return;
+  viewportWidth.value = import.meta.client ? window.innerWidth : 0;
+  // Reset zoom before sliding so the incoming media has its natural dimensions.
+  zoom.value = 1;
+  pan.value = { x: 0, y: 0 };
+  rotation.value = 0;
+  settleTo({ x: -direction * viewportWidth.value, y: 0 }, () => {
+    selectedIndex.value = (selectedIndex.value + direction + total) % total;
+    resetView();
+  });
 }
 
 function setZoom(value: number) {
@@ -107,12 +162,21 @@ function onViewerWheel(event: WheelEvent) {
 }
 
 function onPointerDown(event: PointerEvent) {
-  if (!isSelectedImage.value || (event.pointerType === 'mouse' && event.button !== 0)) return;
+  if (
+    !open.value ||
+    settling.value ||
+    !isSelectedImage.value ||
+    (event.pointerType === 'mouse' && event.button !== 0)
+  )
+    return;
 
   (event.currentTarget as HTMLElement | null)?.setPointerCapture?.(event.pointerId);
+  viewportWidth.value = import.meta.client ? window.innerWidth : 0;
+  dragging.value = true;
   pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
   if (pointers.size > 1) {
     wasPinching = true;
+    swipeOffset.value = { x: 0, y: 0 };
     pinchStart = { distance: pointerDistance(), zoom: zoom.value };
     dragStart.value = null;
     return;
@@ -140,7 +204,17 @@ function onPointerMove(event: PointerEvent) {
     }
     return;
   }
-  if (!dragStart.value || !isSelectedImage.value || zoom.value <= 1) return;
+  if (!dragStart.value || !isSelectedImage.value) return;
+  if (zoom.value <= 1) {
+    if (wasPinching || event.pointerType === 'mouse') return;
+    const x = event.clientX - dragStart.value.x;
+    const y = event.clientY - dragStart.value.y;
+    swipeOffset.value =
+      Math.abs(x) > Math.abs(y)
+        ? { x: canNavigateMedia.value ? x : x * 0.2, y: 0 }
+        : { x: 0, y: y > 0 ? y : y * 0.2 };
+    return;
+  }
 
   pan.value = {
     x: dragStart.value.panX + event.clientX - dragStart.value.x,
@@ -166,8 +240,18 @@ function onPointerUp(event: PointerEvent) {
     const deltaX = event.clientX - start.x;
     const deltaY = event.clientY - start.y;
     if (Math.abs(deltaX) >= 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
-      navigateMedia(deltaX < 0 ? 1 : -1);
+      if (canNavigateMedia.value) navigateMedia(deltaX < 0 ? 1 : -1);
+      else settleTo({ x: 0, y: 0 });
+    } else if (deltaY >= 120 && deltaY > Math.abs(deltaX) * 1.5) {
+      // Keep the dismissed image offscreen throughout the modal exit transition.
+      settleTo({ x: 0, y: import.meta.client ? window.innerHeight : deltaY }, () => {
+        open.value = false;
+      });
+    } else {
+      settleTo({ x: 0, y: 0 });
     }
+  } else if (!wasPinching && zoom.value <= 1) {
+    settleTo({ x: 0, y: 0 });
   }
   pinchStart = null;
   dragStart.value = null;
@@ -176,6 +260,7 @@ function onPointerUp(event: PointerEvent) {
     dragStart.value = { ...remaining, panX: pan.value.x, panY: pan.value.y };
   } else {
     wasPinching = false;
+    dragging.value = false;
   }
 }
 
@@ -233,15 +318,14 @@ watch(
   },
 );
 
-watch(selectedIndex, () => {
-  resetView();
-});
+watch(selectedIndex, resetView, { flush: 'sync' });
 
 watch(open, async (isOpen) => {
+  if (isOpen) resetView();
+  else cancelSettling();
   if (!import.meta.client) return;
 
   if (isOpen) {
-    resetView();
     await nextTick();
     window.addEventListener('keydown', onViewerKeydown);
     return;
@@ -251,6 +335,7 @@ watch(open, async (isOpen) => {
 });
 
 onBeforeUnmount(() => {
+  cancelSettling();
   if (import.meta.client) {
     window.removeEventListener('keydown', onViewerKeydown);
   }
@@ -357,7 +442,7 @@ onBeforeUnmount(() => {
         />
 
         <div
-          class="flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden pt-16"
+          class="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden pt-16"
           :class="zoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-zoom-in'"
           @wheel="onViewerWheel"
           @dblclick="toggleZoom"
@@ -367,27 +452,69 @@ onBeforeUnmount(() => {
           @pointercancel="onPointerUp"
           @lostpointercapture="onPointerUp"
         >
-          <img
-            class="max-h-full max-w-full object-contain transition-transform duration-100 ease-out"
-            v-if="isSelectedImage && selectedMedia"
-            :src="$storage(selectedMedia.path)"
-            :alt="selectedMedia.original_name"
-            :style="{ transform: imageTransform }"
-            draggable="false"
-          />
-          <video
-            class="max-h-full max-w-full"
-            v-else-if="isSelectedVideo && selectedMedia"
-            :src="$storage(selectedMedia.path)"
-            :poster="
-              selectedMedia.thumbnail_path ? $storage(selectedMedia.thumbnail_path) : undefined
-            "
-            controls
-            autoplay
-            playsinline
-          />
+          <div
+            class="pointer-events-none absolute inset-0 flex items-center justify-center pt-16"
+            v-for="adjacent in adjacentMedia"
+            :key="adjacent.direction"
+            aria-hidden="true"
+            :style="{
+              ...slideStyle,
+              transform: `translate3d(${swipeOffset.x + adjacent.direction * viewportWidth}px, 0, 0)`,
+              visibility: dragging || settling ? 'visible' : 'hidden',
+            }"
+          >
+            <img
+              class="max-h-full max-w-full object-contain"
+              v-if="adjacent.item.mime_type?.startsWith('image/') || adjacent.item.thumbnail_path"
+              :src="
+                $storage(
+                  adjacent.item.mime_type?.startsWith('image/')
+                    ? adjacent.item.path
+                    : adjacent.item.thumbnail_path!,
+                )
+              "
+              alt=""
+              draggable="false"
+            />
+          </div>
+          <div class="flex h-full w-full items-center justify-center" :style="slideStyle">
+            <img
+              class="photo-viewer-image max-h-full max-w-full object-contain"
+              v-if="isSelectedImage && selectedMedia"
+              :class="{ 'photo-viewer-image--active': dragging }"
+              :src="$storage(selectedMedia.path)"
+              :alt="selectedMedia.original_name"
+              :style="{ transform: imageTransform }"
+              draggable="false"
+            />
+            <video
+              class="max-h-full max-w-full"
+              v-else-if="isSelectedVideo && selectedMedia"
+              :src="$storage(selectedMedia.path)"
+              :poster="
+                selectedMedia.thumbnail_path ? $storage(selectedMedia.thumbnail_path) : undefined
+              "
+              controls
+              autoplay
+              playsinline
+            />
+          </div>
         </div>
       </div>
     </template>
   </UModal>
 </template>
+
+<style scoped>
+.photo-viewer-image {
+  transition: transform 100ms ease-out;
+}
+.photo-viewer-image--active {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-viewer-image {
+    transition: none;
+  }
+}
+</style>
