@@ -4,6 +4,7 @@ import {
   AccountShare,
   Device,
   SettingChatFolders,
+  SettingGeneral,
   SettingLanguage,
   SettingNotifications,
   Theme,
@@ -73,6 +74,17 @@ const logout = () => {
       />
     </div>
     <div class="bg-elevated rounded-md">
+      <UButton
+        class="justify-start"
+        block
+        color="neutral"
+        size="xl"
+        variant="soft"
+        icon="i-ph-gear-bold"
+        label="Основные"
+        trailing-icon="i-ph-caret-right-bold"
+        @click="overlay.create(SettingGeneral).open()"
+      />
       <UButton
         class="justify-start"
         block
@@ -166,17 +178,6 @@ const logout = () => {
       <UButton
         class="justify-start"
         block
-        disabled
-        color="neutral"
-        size="xl"
-        variant="soft"
-        icon="i-ph-battery-charging-bold"
-        label="Энергосбережение"
-        trailing-icon="i-ph-caret-right-bold"
-      />
-      <UButton
-        class="justify-start"
-        block
         size="xl"
         color="neutral"
         variant="soft"
@@ -190,8 +191,6 @@ const logout = () => {
         </div>
       </UButton>
     </div>
-    <SettingDialog />
-
     <div class="bg-elevated rounded-md">
       <UButton
         class="justify-start"
