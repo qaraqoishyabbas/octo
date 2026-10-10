@@ -226,3 +226,76 @@ test('legacy manual profile preference is ignored and edits no longer persist it
   settings.updateProfile('mobile', { enabled: false });
   assert.equal('selection' in JSON.parse(saved.get('octo:media-auto-download:v1:b')!), false);
 });
+
+test('prefetch never admits partial 206 video responses as a full cached body', async () => {
+  const settings = await store();
+  const writes: string[] = [];
+  Object.assign(globalThis.window, {
+    caches: {
+      open: async () => ({
+        match: async () => undefined,
+        put: async (url: string) => {
+          writes.push(url);
+        },
+      }),
+    },
+  });
+  const originalHttp = globalThis.$http;
+  globalThis.$http = async (
+    _url: string,
+    options: { onFetchResponse: (context: { response: { status: number } }) => void },
+  ) => {
+    options.onFetchResponse?.({ response: { status: 206 } });
+    return new Blob(['only a range'], { type: 'video/mp4' });
+  };
+  try {
+    assert.equal(
+      await settings.prefetch(
+        { ...video, size: 1024 },
+        'https://api.example/storage/messages/partial.mp4',
+      ),
+      false,
+    );
+    assert.deepEqual(writes, []);
+  } finally {
+    globalThis.$http = originalHttp;
+  }
+});
+
+test('concurrent eligible consumers share one complete media prefetch', async () => {
+  const settings = await store();
+  const entries = new Map<string, Response>();
+  let requests = 0;
+  let finish!: () => void;
+  const originalHttp = globalThis.$http;
+  Object.assign(globalThis.window, {
+    caches: {
+      open: async () => ({
+        match: async (url: string) => entries.get(url),
+        put: async (url: string, response: Response) => {
+          entries.set(url, response);
+        },
+      }),
+    },
+  });
+  globalThis.$http = async () => {
+    requests++;
+    await new Promise<void>((done) => {
+      finish = done;
+    });
+    return new Blob(['video full'], { type: 'video/mp4' });
+  };
+  try {
+    const url = 'https://api.example/storage/messages/shared.mp4';
+    const first = settings.prefetch({ ...video, size: 100 }, url);
+    const second = settings.prefetch({ ...video, size: 100 }, url);
+    await new Promise((done) => setImmediate(done));
+    assert.equal(requests, 1);
+    finish();
+    assert.equal(await first, true);
+    assert.equal(await second, true);
+    assert.equal(await entries.get(url)!.text(), 'video full');
+  } finally {
+    globalThis.$http = originalHttp;
+  }
+});

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatStorageBytes } from '~/utils/storage-usage';
+import { formatStorageBytes, formatCacheUsage } from '~/utils/storage-usage';
 import type { StorageCategory } from '~/stores/storage-usage';
 
 const emit = defineEmits<{ close: [boolean] }>();
@@ -12,11 +12,15 @@ const rows: { kind: StorageCategory; label: string; color: string }[] = [
   { kind: 'photos', label: 'Фотографии', color: '#8b5cf6' },
   { kind: 'videos', label: 'Видео', color: '#3b82f6' },
   { kind: 'files', label: 'Файлы и другое медиа', color: '#14b8a6' },
+  { kind: 'avatars', label: 'Аватарки', color: '#ec4899' },
   { kind: 'data', label: 'Данные чатов', color: '#f59e0b' },
   { kind: 'drafts', label: 'Черновики', color: '#f43f5e' },
 ];
 const selectedBytes = computed(() =>
   selected.value.reduce((total, kind) => total + (memory.usage[kind]?.bytes ?? 0), 0),
+);
+const selectedUnknown = computed(() =>
+  selected.value.some((kind) => memory.usage[kind]?.unknownCount),
 );
 const hasSelection = computed(() =>
   selected.value.some((kind) => (memory.usage[kind]?.count ?? 0) > 0),
@@ -91,12 +95,10 @@ onMounted(() => memory.refresh());
           class="relative mx-auto my-4 flex h-44 w-44 items-center justify-center rounded-full"
           :style="{ background: chart }"
           role="img"
-          :aria-label="`Занято памяти: ${formatStorageBytes(memory.totalBytes)}`"
+          :aria-label="`Занято памяти: ${formatCacheUsage(memory.totalUsage)}`"
         >
           <div class="bg-default flex h-32 w-32 flex-col items-center justify-center rounded-full">
-            <strong>{{
-              memory.loading ? 'Считаем…' : formatStorageBytes(memory.totalBytes)
-            }}</strong
+            <strong>{{ memory.loading ? 'Считаем…' : formatCacheUsage(memory.totalUsage) }}</strong
             ><span class="text-muted text-xs">На устройстве</span>
           </div>
         </div>
@@ -122,7 +124,7 @@ onMounted(() => memory.refresh());
               memory.loading
                 ? '…'
                 : memory.usage[row.kind]
-                  ? formatStorageBytes(memory.usage[row.kind]!.bytes)
+                  ? formatCacheUsage(memory.usage[row.kind]!)
                   : 'Недоступно'
             }}</span>
           </div>
@@ -131,13 +133,19 @@ onMounted(() => memory.refresh());
           block
           size="xl"
           color="primary"
-          :label="`Очистить ${formatStorageBytes(selectedBytes)}`"
+          :label="
+            selectedUnknown ? 'Очистить выбранное' : `Очистить ${formatStorageBytes(selectedBytes)}`
+          "
           :loading="memory.clearing"
           :disabled="memory.loading || memory.clearing || !hasSelection"
           @click="requestClear"
         />
         <p class="text-muted px-3 text-sm" v-if="!memory.loading && !memory.cacheSupported">
           Управление кэшем недоступно в этом браузере.
+        </p>
+        <p class="text-muted px-3 text-sm" v-if="memory.totalUsage.unknownCount">
+          Браузер скрывает размер части внешних файлов. Эти файлы сохранены в кэше и доступны для
+          очистки, но не входят в измеренный объём.
         </p>
       </div>
     </template>

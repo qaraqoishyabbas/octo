@@ -7,7 +7,7 @@ import ts from 'typescript';
 import * as Vue from 'vue';
 import { renderToString } from '@vue/server-renderer';
 
-async function tile(type: string, mounted = true) {
+async function tile(type: string, mounted = true, visible = true) {
   const source = readFileSync(
     new URL(
       '../app/components/feature/dialog/DialogMessagesListItemMediaTile.vue',
@@ -34,6 +34,7 @@ async function tile(type: string, mounted = true) {
   const policy = Vue.reactive({ allowed: false });
   const emitted: string[] = [];
   const mountCallbacks: (() => void)[] = [];
+  let visibilityChanged: ((entries: Array<{ isIntersecting: boolean }>) => void) | undefined;
   const code = ts.transpileModule(descriptor.scriptSetup!.content, {
     compilerOptions: { module: ts.ModuleKind.CommonJS },
   }).outputText;
@@ -46,7 +47,11 @@ async function tile(type: string, mounted = true) {
     'watch',
     'useMediaAutoDownloadStore',
     'onMounted',
-    `${code}; return { props, open, loadAllowed, skeletonClass, durationLabel, sourceOf, emit };`,
+    'onBeforeUnmount',
+    'useMediaCacheSource',
+    '$storage',
+    'IntersectionObserver',
+    `${code}; return { props, open, loadAllowed, skeletonClass, durationLabel, sourceOf, emit, tileElement, mediaSource };`,
   )(
     {},
     () => props,
@@ -56,7 +61,22 @@ async function tile(type: string, mounted = true) {
     Vue.watch,
     () => ({ canAutoLoad: () => policy.allowed }),
     (callback: () => void) => mountCallbacks.push(callback),
+    () => {},
+    (_file: unknown, url: { value: string }, enabled: { value: boolean }) => ({
+      source: Vue.computed(() => (enabled.value ? url.value : undefined)),
+    }),
+    (path: string) => `https://storage.example${path}`,
+    class {
+      constructor(callback: typeof visibilityChanged) {
+        visibilityChanged = callback;
+      }
+      observe() {
+        visibilityChanged?.([{ isIntersecting: visible }]);
+      }
+      disconnect() {}
+    },
   );
+  state.tileElement.value = {};
   if (mounted) mountCallbacks.forEach((callback) => callback());
   const render = new Function(
     'Vue',
@@ -66,6 +86,7 @@ async function tile(type: string, mounted = true) {
     state,
     policy,
     emitted,
+    setVisible: (value: boolean) => visibilityChanged?.([{ isIntersecting: value }]),
     mount: () => mountCallbacks.forEach((callback) => callback()),
     html: () => {
       const app = Vue.createSSRApp({ setup: () => ({ ...Vue.toRefs(props), ...state }), render });
@@ -104,5 +125,13 @@ test('initial SSR and hydration emit no media URL before persisted settings are 
   view.policy.allowed = true;
   assert.doesNotMatch(await view.html(), /src=/);
   view.mount();
+  assert.match(await view.html(), /src="https:\/\/storage.example\/preview"/);
+});
+
+test('eligible media tiles defer their full source until visible', async () => {
+  const view = await tile('image/jpeg', true, false);
+  view.policy.allowed = true;
+  assert.doesNotMatch(await view.html(), /src=/);
+  view.setVisible(true);
   assert.match(await view.html(), /src="https:\/\/storage.example\/preview"/);
 });

@@ -29,6 +29,11 @@ const mediaItems = computed(() => (props.items.length ? props.items : props.imag
 const selectedMedia = computed(() => mediaItems.value[selectedIndex.value] ?? null);
 const isSelectedImage = computed(() => selectedMedia.value?.mime_type?.startsWith('image/'));
 const isSelectedVideo = computed(() => selectedMedia.value?.mime_type?.startsWith('video/'));
+const { source: videoSource } = useMediaCacheSource(
+  selectedMedia,
+  computed(() => (selectedMedia.value ? $storage(selectedMedia.value.path) : undefined)),
+  computed(() => open.value && !!isSelectedVideo.value),
+);
 const canNavigateMedia = computed(() => mediaItems.value.length > 1);
 const viewerTitle = computed(() => {
   if (props.titleMode === 'file') {
@@ -509,7 +514,7 @@ onBeforeUnmount(() => {
             <video
               class="max-h-full max-w-full"
               v-else-if="open && isSelectedVideo && selectedMedia"
-              :src="$storage(selectedMedia.path)"
+              :src="videoSource"
               :poster="
                 selectedMedia.thumbnail_path ? $storage(selectedMedia.thumbnail_path) : undefined
               "

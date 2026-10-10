@@ -5,7 +5,7 @@ import {
   SettingDataMobile,
   SettingDataWifi,
 } from '#components';
-import { formatStorageBytes } from '~/utils/storage-usage';
+import { formatStorageBytes, formatCacheUsage } from '~/utils/storage-usage';
 
 const emit = defineEmits<{ close: [boolean] }>();
 const overlay = useOverlay();
@@ -66,7 +66,7 @@ onMounted(() => memory.refresh());
                   ? 'Считаем…'
                   : memory.error
                     ? 'Недоступно'
-                    : formatStorageBytes(memory.totalBytes)
+                    : formatCacheUsage(memory.totalUsage)
               }}</span>
             </div>
           </UButton>

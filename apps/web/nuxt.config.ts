@@ -86,10 +86,42 @@ export default defineNuxtConfig({
           },
         },
         {
-          urlPattern: /^https?:\/\/.+\/storage\/.*$/i,
+          urlPattern: /^https?:\/\/.+\/storage\/avatars\/.*$/i,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'avatars-cache',
+            cacheableResponse: { statuses: [0, 200] },
+            expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+          },
+        },
+        {
+          urlPattern: /^https?:\/\/.+\/storage\/(?!avatars\/).*$/i,
           handler: 'CacheFirst',
           options: {
             cacheName: 'storage-cache',
+            // Run before RangeRequestsPlugin: opaque bodies cannot be inspected or sliced.
+            plugins: [
+              {
+                cachedResponseWillBeUsed: async ({ request, cachedResponse }) => {
+                  if (
+                    cachedResponse?.type === 'opaque' &&
+                    (request.headers.has('range') || request.destination === 'video')
+                  )
+                    return null;
+                  return cachedResponse;
+                },
+                cacheWillUpdate: async ({ request, response }) => {
+                  if (
+                    response.type === 'opaque' &&
+                    (request.headers.has('range') || request.destination === 'video')
+                  )
+                    return null;
+                  return response;
+                },
+              },
+            ],
+            cacheableResponse: { statuses: [0, 200] },
+            rangeRequests: true,
             expiration: {
               maxEntries: 200,
               maxAgeSeconds: 60 * 60 * 24 * 30,

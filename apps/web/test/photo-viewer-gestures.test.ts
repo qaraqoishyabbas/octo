@@ -31,6 +31,8 @@ function viewer(reducedMotion = false, itemCount = 2, allowAutoLoad = true) {
     'onBeforeUnmount',
     'useFileDownload',
     'useMediaAutoDownloadStore',
+    'useMediaCacheSource',
+    '$storage',
     'window',
     'setTimeout',
     'clearTimeout',
@@ -52,6 +54,10 @@ function viewer(reducedMotion = false, itemCount = 2, allowAutoLoad = true) {
     () => {},
     () => ({ downloadingKey: ref(null) }),
     () => ({ canAutoLoad: () => allowAutoLoad }),
+    (_file: unknown, url: { value: string }, enabled: { value: boolean }) => ({
+      source: computed(() => (enabled.value ? url.value : undefined)),
+    }),
+    (path: string) => path,
     {
       innerWidth: 400,
       innerHeight: 800,

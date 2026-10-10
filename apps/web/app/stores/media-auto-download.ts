@@ -56,6 +56,7 @@ export const useMediaAutoDownloadStore = defineStore('media-auto-download', () =
   const isOnline = network.isOnline;
   const activeProfile = computed<AutoDownloadProfile>(() => detectedProfile.value ?? 'mobile');
   const accountId = computed(() => String(auth.user?.id ?? ''));
+  const inflight = new Map<string, Promise<boolean>>();
   const pending = new Map<string, { controller: AbortController; file: DownloadableMedia }>();
 
   const persist = () => {
@@ -74,6 +75,7 @@ export const useMediaAutoDownloadStore = defineStore('media-auto-download', () =
     (id) => {
       for (const { controller } of pending.values()) controller.abort();
       pending.clear();
+      inflight.clear();
       profiles.value = { mobile: defaults(10), wifi: defaults(15) };
       if (!id || typeof window === 'undefined') return;
       try {
@@ -93,6 +95,7 @@ export const useMediaAutoDownloadStore = defineStore('media-auto-download', () =
   onScopeDispose(() => {
     for (const { controller } of pending.values()) controller.abort();
     pending.clear();
+    inflight.clear();
   });
 
   function updateProfile(profile: AutoDownloadProfile, patch: ProfilePatch) {
@@ -154,7 +157,24 @@ export const useMediaAutoDownloadStore = defineStore('media-auto-download', () =
     { deep: true, flush: 'sync' },
   );
 
-  async function prefetch(file: DownloadableMedia, url: string): Promise<boolean> {
+  function prefetch(file: DownloadableMedia, url: string): Promise<boolean> {
+    if (!canAutoLoad(file)) return Promise.resolve(false);
+    const current = inflight.get(url);
+    if (current) return current;
+    const request = performPrefetch(file, url);
+    inflight.set(url, request);
+    void request.finally(() => {
+      if (inflight.get(url) === request) inflight.delete(url);
+    });
+    return request;
+  }
+
+  async function waitForPrefetch(url: string): Promise<void> {
+    const current = inflight.get(url);
+    if (current) await current;
+  }
+
+  async function performPrefetch(file: DownloadableMedia, url: string): Promise<boolean> {
     if (
       !canAutoLoad(file) ||
       typeof window === 'undefined' ||
@@ -168,16 +188,22 @@ export const useMediaAutoDownloadStore = defineStore('media-auto-download', () =
     try {
       const cache = await window.caches.open('storage-cache');
       if (controller.signal.aborted || startedAccount !== accountId.value) return false;
-      if (await cache.match(url)) return true;
+      const cached = await cache.match(url);
+      if (cached?.status === 200 || cached?.type === 'opaque') return true;
       if (!canAutoLoad(file) || controller.signal.aborted) return false;
+      let responseStatus = 200;
       const blob = await $http<Blob>(url, {
         signal: controller.signal,
         credentials: 'omit',
         responseType: 'blob',
         headers: { Accept: '*/*' },
+        onFetchResponse({ response }) {
+          responseStatus = response.status;
+        },
       });
       const size = blob.size;
       if (
+        responseStatus !== 200 ||
         controller.signal.aborted ||
         startedAccount !== accountId.value ||
         !canAutoLoad({ ...file, size })
@@ -207,5 +233,6 @@ export const useMediaAutoDownloadStore = defineStore('media-auto-download', () =
     canAutoLoad,
     summary,
     prefetch,
+    waitForPrefetch,
   };
 });

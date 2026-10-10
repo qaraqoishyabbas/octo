@@ -30,6 +30,33 @@ watch(
   },
 );
 
+const tileElement = ref<HTMLElement | null>(null);
+const visible = ref(false);
+let visibilityObserver: IntersectionObserver | null = null;
+onMounted(() => {
+  if (typeof IntersectionObserver === 'undefined' || !tileElement.value) {
+    visible.value = true;
+    return;
+  }
+  visibilityObserver = new IntersectionObserver(([entry]) => {
+    visible.value = entry?.isIntersecting ?? false;
+  });
+  visibilityObserver.observe(tileElement.value);
+});
+onBeforeUnmount(() => visibilityObserver?.disconnect());
+const cacheSourceUrl = computed(() =>
+  props.item.mime_type.startsWith('image/')
+    ? $storage(sourceOf(props.item))
+    : $storage(props.item.path),
+);
+const cacheEnabled = computed(() => loadAllowed.value && (visible.value || manuallyLoaded.value));
+const { source: mediaSource } = useMediaCacheSource(
+  computed(() => props.item),
+  cacheSourceUrl,
+  cacheEnabled,
+  { prefetch: true },
+);
+
 const skeletonClass = 'absolute inset-0 animate-pulse bg-neutral-200 dark:bg-elevated';
 
 function sourceOf(item: MessageAttachment) {
@@ -64,7 +91,7 @@ function open(event: MouseEvent) {
 </script>
 
 <template>
-  <div class="bg-muted relative h-full w-full overflow-hidden rounded-xs">
+  <div class="bg-muted relative h-full w-full overflow-hidden rounded-xs" ref="tileElement">
     <div v-if="loadAllowed && !loaded" :class="skeletonClass" aria-hidden="true" />
 
     <div
@@ -75,7 +102,7 @@ function open(event: MouseEvent) {
     >
       <img
         class="absolute inset-0 h-full w-full rounded-xs object-cover transition-opacity duration-300"
-        :src="loadAllowed ? $storage(sourceOf(item)) : undefined"
+        :src="mediaSource"
         :alt="item.original_name || ''"
         :width="item.width || undefined"
         :height="item.height || undefined"
@@ -96,7 +123,7 @@ function open(event: MouseEvent) {
     >
       <video
         class="absolute inset-0 h-full w-full object-cover transition-opacity duration-300"
-        :src="loadAllowed ? $storage(item.path) : undefined"
+        :src="mediaSource"
         :poster="loadAllowed && item.thumbnail_path ? $storage(item.thumbnail_path) : undefined"
         :preload="loadAllowed ? 'auto' : 'none'"
         playsinline
