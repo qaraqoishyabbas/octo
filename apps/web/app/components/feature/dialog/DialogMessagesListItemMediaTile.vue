@@ -103,13 +103,13 @@ function open(event: MouseEvent) {
       <img
         class="absolute inset-0 h-full w-full rounded-xs object-cover transition-opacity duration-300"
         :src="mediaSource"
-        :alt="item.original_name || ''"
+        alt=""
         :width="item.width || undefined"
         :height="item.height || undefined"
         loading="lazy"
         decoding="async"
         referrerpolicy="no-referrer"
-        :class="loaded ? 'opacity-100' : 'opacity-0'"
+        :class="loaded && mediaSource && !failed ? 'opacity-100' : 'opacity-0'"
         @load="emit('load')"
         @error="emit('error')"
       />
