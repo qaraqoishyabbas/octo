@@ -346,6 +346,27 @@ const openFilePicker = () => {
   }
 };
 
+const onPaste = (event: ClipboardEvent) => {
+  if (closed || loading.value || event.defaultPrevented || !event.clipboardData) {
+    return;
+  }
+
+  const files = Array.from(event.clipboardData.files);
+  if (files.length === 0) {
+    for (const item of Array.from(event.clipboardData.items)) {
+      const file = item.kind === 'file' ? item.getAsFile() : null;
+      if (file) files.push(file);
+    }
+  }
+  if (files.length === 0) {
+    return;
+  }
+
+  event.preventDefault();
+  event.stopPropagation();
+  addFiles(files);
+};
+
 const onFileSelect = (event: Event) => {
   const input = event.target as HTMLInputElement | null;
 
@@ -427,6 +448,7 @@ const sendMessage = async () => {
 };
 
 onMounted(async () => {
+  window.addEventListener('paste', onPaste, true);
   showOversizedFilesToast(initialOversizedFiles);
 
   if (initialSkippedFilesCount > 0) {
@@ -447,6 +469,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  window.removeEventListener('paste', onPaste, true);
   closed = true;
   previews.forEach((preview) => preview.abortController?.abort());
 

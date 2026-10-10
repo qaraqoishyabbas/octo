@@ -26,7 +26,9 @@ function setup(
   const unmounted: Array<() => unknown> = [];
   const events: unknown[][] = [];
   const toasts: unknown[] = [];
+  const window = new EventTarget();
   const globals = {
+    window,
     exports: {},
     require: (name: string) => {
       if (name === '~/utils/create-local-id') return { createLocalId };
@@ -58,6 +60,7 @@ function setup(
     state,
     events,
     toasts,
+    window,
     mount: () => Promise.all(mounted.map((fn) => fn())),
     unmount: () => unmounted.forEach((fn) => fn()),
   };
@@ -176,6 +179,98 @@ function modal(boundary: ReturnType<typeof uploadBoundary>, sent = false) {
     'previews, uploadPreview, cancelUpload, retryUpload, removePreview, close, sendMessage',
   );
 }
+
+function pasteEvent(files: File[], items: unknown[] = []) {
+  const event = new Event('paste', { cancelable: true });
+  Object.assign(event, { clipboardData: { files, items } });
+  return event;
+}
+
+function pasteModal(uploadType: 'media' | 'file' = 'media', publicConfig = {}) {
+  const boundary = uploadBoundary();
+  const ui = setup(
+    modalPath,
+    {
+      files: [file],
+      uploadType,
+      initialMessageHtml: '<p>Caption</p>',
+      initialMessageText: 'Caption',
+    },
+    {
+      useUploadsStore: () => boundary.store,
+      useMessagesStore: () => ({ send: async () => false }),
+      useRuntimeConfig: () => ({ public: publicConfig }),
+    },
+    'previews, messageHtml, loading, close',
+  );
+  return ui;
+}
+
+test('paste into the open media modal appends files while keeping uploads and caption', async () => {
+  const ui = pasteModal();
+  await ui.mount();
+  const originalId = ui.state.previews[0].localId;
+  const added = new File(['video'], 'clip.mp4', { type: 'video/mp4' });
+  const event = pasteEvent([added]);
+  ui.window.dispatchEvent(event);
+  assert.equal(event.defaultPrevented, true);
+  assert.deepEqual(
+    ui.state.previews.map((preview: any) => preview.sourceFile),
+    [file, added],
+  );
+  assert.equal(ui.state.previews[0].localId, originalId);
+  assert.equal(ui.state.previews[1].uploading, true);
+  assert.equal(ui.state.messageHtml.value, '<p>Caption</p>');
+  ui.unmount();
+  const afterUnmount = pasteEvent([added]);
+  ui.window.dispatchEvent(afterUnmount);
+  assert.equal(afterUnmount.defaultPrevented, false);
+  assert.equal(ui.state.previews.length, 2);
+});
+
+test('file modal accepts clipboard item documents and does not duplicate FileList entries', async () => {
+  const ui = pasteModal('file');
+  await ui.mount();
+  const document = new File(['pdf'], 'doc.pdf', { type: 'application/pdf' });
+  const item = { kind: 'file', getAsFile: () => document };
+  ui.window.dispatchEvent(pasteEvent([], [item, { kind: 'file', getAsFile: () => null }]));
+  assert.equal(ui.state.previews.length, 2);
+  ui.window.dispatchEvent(pasteEvent([file], [{ kind: 'file', getAsFile: () => file }]));
+  assert.equal(ui.state.previews.length, 3);
+  assert.equal(ui.state.previews[1].sourceFile, document);
+  ui.unmount();
+});
+
+test('modal paste enforces remaining slots, file size and media mode restrictions', async () => {
+  const ui = pasteModal('media', { uploadMessageMaxFiles: 2, uploadMessageMaxMb: 1 });
+  await ui.mount();
+  const oversized = new File([new Uint8Array(1024 * 1024 + 1)], 'huge.png', { type: 'image/png' });
+  const document = new File(['pdf'], 'doc.pdf', { type: 'application/pdf' });
+  const added = new File(['image'], 'next.png', { type: 'image/png' });
+  ui.window.dispatchEvent(pasteEvent([oversized, document, added, file]));
+  assert.deepEqual(
+    ui.state.previews.map((preview: any) => preview.sourceFile),
+    [file, added],
+  );
+  assert.equal(ui.toasts.length, 3);
+  ui.unmount();
+});
+
+test('modal leaves text paste unchanged and stops adding files while sending or after close', async () => {
+  const ui = pasteModal();
+  await ui.mount();
+  const textEvent = pasteEvent([]);
+  ui.window.dispatchEvent(textEvent);
+  assert.equal(textEvent.defaultPrevented, false);
+  ui.state.loading.value = true;
+  ui.window.dispatchEvent(pasteEvent([file]));
+  assert.equal(ui.state.previews.length, 1);
+  ui.state.loading.value = false;
+  ui.state.close();
+  ui.window.dispatchEvent(pasteEvent([file]));
+  assert.equal(ui.state.previews.length, 1);
+  ui.unmount();
+});
 
 test('removing a modal preview aborts it and deletes a late successful upload', async () => {
   const boundary = uploadBoundary();
