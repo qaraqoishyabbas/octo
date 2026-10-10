@@ -1,3 +1,4 @@
+<script setup lang="ts"></script>
 <template>
   <div class="sticky top-0 right-0 left-0">
     <div class="via-default/50 from-default/70 bg-gradient-to-b to-transparent">
@@ -5,8 +6,11 @@
         <div class="bg-elevated flex rounded-md p-0.5 shadow-lg">
           <UButton color="neutral" icon="i-ph-caret-left-bold" size="xl" variant="soft" to="/" />
         </div>
-        <div class="bg-elevated flex items-center rounded-md p-0.5 shadow-lg">
-          <div class="flex flex-col items-center px-4">
+        <div class="bg-elevated flex w-full items-center gap-2 rounded-md p-0.5 shadow-lg">
+          <USkeleton>
+            <UAvatar class="bg-accented" size="xl" />
+          </USkeleton>
+          <div class="flex flex-col">
             <div class="flex space-x-1">
               <USkeleton class="bg-accented h-4 w-12" />
               <USkeleton class="bg-accented h-4 w-32" />
@@ -16,11 +20,6 @@
               <USkeleton class="bg-accented h-4 w-10" />
             </div>
           </div>
-        </div>
-        <div class="bg-elevated flex rounded-md p-0.5 shadow-lg">
-          <USkeleton>
-            <UAvatar class="bg-accented" size="xl" />
-          </USkeleton>
         </div>
       </div>
     </div>
