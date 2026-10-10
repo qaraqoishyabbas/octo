@@ -14,6 +14,22 @@ const emit = defineEmits<{
   error: [];
 }>();
 
+const autoDownload = useMediaAutoDownloadStore();
+const manuallyLoaded = ref(false);
+const mounted = ref(false);
+onMounted(() => {
+  mounted.value = true;
+});
+const loadAllowed = computed(
+  () => mounted.value && (manuallyLoaded.value || autoDownload.canAutoLoad(props.item)),
+);
+watch(
+  () => props.item.id,
+  () => {
+    manuallyLoaded.value = false;
+  },
+);
+
 const skeletonClass = 'absolute inset-0 animate-pulse bg-neutral-200 dark:bg-elevated';
 
 function sourceOf(item: MessageAttachment) {
@@ -42,13 +58,14 @@ function open(event: MouseEvent) {
     return;
   }
 
+  manuallyLoaded.value = true;
   emit('open');
 }
 </script>
 
 <template>
   <div class="bg-muted relative h-full w-full overflow-hidden rounded-xs">
-    <div v-if="!loaded" :class="skeletonClass" aria-hidden="true" />
+    <div v-if="loadAllowed && !loaded" :class="skeletonClass" aria-hidden="true" />
 
     <div
       class="absolute inset-0 block text-left"
@@ -58,7 +75,7 @@ function open(event: MouseEvent) {
     >
       <img
         class="absolute inset-0 h-full w-full rounded-xs object-cover transition-opacity duration-300"
-        :src="$storage(sourceOf(item))"
+        :src="loadAllowed ? $storage(sourceOf(item)) : undefined"
         :alt="item.original_name || ''"
         :width="item.width || undefined"
         :height="item.height || undefined"
@@ -79,9 +96,9 @@ function open(event: MouseEvent) {
     >
       <video
         class="absolute inset-0 h-full w-full object-cover transition-opacity duration-300"
-        :src="$storage(item.path)"
-        :poster="item.thumbnail_path ? $storage(item.thumbnail_path) : undefined"
-        preload="metadata"
+        :src="loadAllowed ? $storage(item.path) : undefined"
+        :poster="loadAllowed && item.thumbnail_path ? $storage(item.thumbnail_path) : undefined"
+        :preload="loadAllowed ? 'auto' : 'none'"
         playsinline
         muted
         :class="loaded ? 'opacity-100' : 'opacity-0'"
@@ -101,7 +118,18 @@ function open(event: MouseEvent) {
       </span>
     </div>
 
-    <div class="absolute inset-0 flex items-center justify-center p-2" v-if="failed">
+    <button
+      class="absolute inset-0 flex items-center justify-center bg-black/10 text-white"
+      v-if="!loadAllowed && openable"
+      type="button"
+      :aria-label="`Загрузить ${item.original_name || 'медиа'}`"
+      @click="open"
+    >
+      <span class="flex size-10 items-center justify-center rounded-full bg-black/45 backdrop-blur"
+        ><UIcon class="size-5" name="i-ph-arrow-down-bold"
+      /></span>
+    </button>
+    <div class="absolute inset-0 flex items-center justify-center p-2" v-if="failed && loadAllowed">
       <UBadge color="neutral" variant="soft" label="Не удалось загрузить" />
     </div>
   </div>

@@ -61,6 +61,8 @@ export const useUploadsStore = defineStore('uploads', () => {
       }
 
       const xhr = new XMLHttpRequest();
+      const networkUsage = useNetworkUsageStore();
+      let networkAttempt: ReturnType<typeof networkUsage.beginAttempt> = null;
       const operationId = String(++operationSequence);
       activeOperations.value[operationId] = {
         kind: messageUpload ? 'message' : 'avatar',
@@ -80,6 +82,7 @@ export const useUploadsStore = defineStore('uploads', () => {
       const fail = (failure: unknown) => {
         if (settled) return;
         settled = true;
+        networkUsage.finishAttempt(networkAttempt, xhr.responseText, false);
         cleanup();
         if (
           startedRevision === revision.value &&
@@ -129,12 +132,14 @@ export const useUploadsStore = defineStore('uploads', () => {
             return;
           }
           settled = true;
+          networkUsage.finishAttempt(networkAttempt, xhr.responseText, true);
           cleanup();
           onProgress?.(100);
           resolve((payload ?? {}) as T);
         };
         xhr.onerror = () => fail(new Error(errorMessage));
         xhr.onabort = () => fail(new DOMException('Upload aborted', 'AbortError'));
+        networkAttempt = networkUsage.beginAttempt(body);
         xhr.send(body);
       } catch (error) {
         fail(error);

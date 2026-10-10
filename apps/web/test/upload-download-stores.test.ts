@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createPinia, setActivePinia } from 'pinia';
+import { reactive } from 'vue';
+import { useNetworkUsageStore } from '../app/stores/network-usage.ts';
+import { estimatePayloadBytes } from '../app/utils/network-usage.ts';
 
 class UploadRequest {
   static requests: UploadRequest[] = [];
@@ -43,12 +46,13 @@ class UploadRequest {
   }
 }
 
-const auth = { token: 'upload-token' as string | null };
+const auth = reactive({ token: 'upload-token' as string | null, user: { id: 'upload-user' } });
 const httpCalls: Array<{ path: string; options: unknown }> = [];
 const downloadBlob = new Blob(['download']);
 Object.assign(globalThis, {
   XMLHttpRequest: UploadRequest,
   useAuthStore: () => auth,
+  useNetworkUsageStore,
   useRuntimeConfig: () => ({ public: { apiBase: 'https://api.example', apiPrefix: '/v1' } }),
   $http: async (path: string, options: unknown) => {
     httpCalls.push({ path, options });
@@ -75,6 +79,7 @@ async function uploads() {
   UploadRequest.requests = [];
   httpCalls.length = 0;
   auth.token = 'upload-token';
+  auth.user.id = 'upload-user';
   const { useUploadsStore } = await import('../app/stores/uploads.ts');
   return useUploadsStore();
 }
@@ -124,6 +129,75 @@ test('message upload preserves file mode and response metadata without an auth t
   assert.deepEqual(xhr.headers, { Accept: 'application/json' });
   xhr.respond(messageResponse);
   assert.deepEqual(await result, messageResponse);
+});
+
+test('XHR uploads count multipart payloads and response bytes on success and HTTP failure', async () => {
+  const store = await uploads();
+  const usage = useNetworkUsageStore();
+  const success = store.uploadMessageFile(file, { type: 'file' });
+  const first = UploadRequest.requests[0]!;
+  first.respond(messageResponse);
+  await success;
+  const failure = store.uploadAvatar(file, { entity: 'avatars' });
+  const rejected = assert.rejects(failure);
+  const second = UploadRequest.requests[1]!;
+  second.respond({ message: 'Invalid file' }, 422);
+  await rejected;
+  assert.equal(
+    usage.state.sentBytes,
+    estimatePayloadBytes(first.body) + estimatePayloadBytes(second.body),
+  );
+  assert.equal(
+    usage.state.receivedBytes,
+    estimatePayloadBytes(first.responseText) + estimatePayloadBytes(second.responseText),
+  );
+  assert.equal(usage.state.successfulRequests, 1);
+  assert.equal(usage.state.failedRequests, 1);
+});
+
+test('upload abort and network error count once, while pre-aborted uploads do not count', async () => {
+  const store = await uploads();
+  const usage = useNetworkUsageStore();
+  const controller = new AbortController();
+  const cancelled = store.uploadMessageFile(file, { type: 'file', signal: controller.signal });
+  const rejected = assert.rejects(cancelled, { name: 'AbortError' });
+  const staleAbort = UploadRequest.requests[0]!.onabort!;
+  controller.abort();
+  staleAbort();
+  await rejected;
+  const failure = store.uploadMessageFile(file, { type: 'file' });
+  const failed = assert.rejects(failure);
+  const staleError = UploadRequest.requests[1]!.onerror!;
+  staleError();
+  staleError();
+  await failed;
+  const sentBytes = usage.state.sentBytes;
+  await assert.rejects(store.uploadMessageFile(file, { type: 'file', signal: controller.signal }), {
+    name: 'AbortError',
+  });
+  assert.equal(usage.state.failedRequests, 2);
+  assert.equal(usage.state.successfulRequests, 0);
+  assert.equal(usage.state.sentBytes, sentBytes);
+  assert.equal(usage.state.receivedBytes, 0);
+});
+
+test('XHR upload responses retain the initiating account and do not refill reset statistics', async () => {
+  const store = await uploads();
+  const usage = useNetworkUsageStore();
+  const upload = store.uploadMessageFile(file, { type: 'file' });
+  const xhr = UploadRequest.requests[0]!;
+  auth.user.id = 'other';
+  xhr.respond(messageResponse);
+  await upload;
+  assert.equal(usage.totalBytes, 0);
+  auth.user.id = 'upload-user';
+  assert.equal(usage.state.successfulRequests, 1);
+  const pending = store.uploadMessageFile(file, { type: 'file' });
+  usage.reset();
+  UploadRequest.requests[1]!.respond(messageResponse);
+  await pending;
+  assert.equal(usage.totalBytes, 0);
+  assert.equal(usage.state.successfulRequests, 0);
 });
 
 test('aborting one upload rejects it and leaves concurrent requests running', async () => {
@@ -355,5 +429,85 @@ test('download scopes run concurrently and reset prevents old results from chang
     assert.equal(store.scopes[secondScope], undefined);
   } finally {
     Object.assign(globalThis, { $http: original });
+  }
+});
+
+test('cached attachment save checks server permission with HEAD and reuses cached body', async () => {
+  setActivePinia(createPinia());
+  httpCalls.length = 0;
+  const { useFileDownloadsStore } = await import('../app/stores/file-downloads.ts');
+  const store = useFileDownloadsStore();
+  const originalWindow = globalThis.window;
+  Object.assign(globalThis, {
+    window: {
+      caches: { open: async () => ({ match: async () => new Response('prefetched body') }) },
+    },
+  });
+  try {
+    const blob = await store.downloadFile(
+      store.createScope(),
+      'attachments/cached/download',
+      'cached',
+      'https://storage.example/cached.pdf',
+    );
+    assert.equal(await blob.text(), 'prefetched body');
+    assert.equal(httpCalls.length, 1);
+    assert.equal(httpCalls[0]!.path, 'attachments/cached/download');
+    assert.equal((httpCalls[0]!.options as { method: string }).method, 'HEAD');
+  } finally {
+    Object.assign(globalThis, { window: originalWindow });
+  }
+});
+
+test('cached attachment permission denial rejects and inaccessible cache falls back to authorized GET', async () => {
+  setActivePinia(createPinia());
+  const { useFileDownloadsStore } = await import('../app/stores/file-downloads.ts');
+  const store = useFileDownloadsStore();
+  const originalWindow = globalThis.window;
+  const originalHttp = globalThis.$http;
+  const methods: string[] = [];
+  Object.assign(globalThis, {
+    window: { caches: { open: async () => ({ match: async () => new Response('private body') }) } },
+    $http: async (_url: string, options: { method?: string }) => {
+      methods.push(options.method ?? 'GET');
+      throw new Error('Forbidden');
+    },
+  });
+  try {
+    await assert.rejects(
+      store.downloadFile(
+        store.createScope(),
+        'attachments/private/download',
+        'private',
+        'https://storage.example/private.pdf',
+      ),
+      /Forbidden/,
+    );
+    assert.deepEqual(methods, ['HEAD']);
+    Object.assign(globalThis.window, {
+      caches: {
+        open: async () => {
+          throw new Error('storage disabled');
+        },
+      },
+    });
+    Object.assign(globalThis, {
+      $http: async (_url: string, options: { method?: string }) => {
+        methods.push(options.method ?? 'GET');
+        return downloadBlob;
+      },
+    });
+    assert.equal(
+      await store.downloadFile(
+        store.createScope(),
+        'attachments/file/download',
+        'file',
+        'https://storage.example/file.pdf',
+      ),
+      downloadBlob,
+    );
+    assert.deepEqual(methods, ['HEAD', 'GET']);
+  } finally {
+    Object.assign(globalThis, { window: originalWindow, $http: originalHttp });
   }
 });

@@ -25,7 +25,12 @@ export const useFileDownloadsStore = defineStore('file-downloads', () => {
     delete scopes.value[id];
   };
 
-  const downloadFile = async (id: string, url: string, key: string | number = url) => {
+  const downloadFile = async (
+    id: string,
+    url: string,
+    key: string | number = url,
+    cacheUrl?: string,
+  ) => {
     const scope = scopes.value[id];
     if (!scope || scope.loading) throw new Error('Download scope is unavailable');
     const controller = new AbortController();
@@ -34,11 +39,29 @@ export const useFileDownloadsStore = defineStore('file-downloads', () => {
     scope.loading = true;
     scope.error = null;
     try {
-      const blob = await $http<Blob>(url, {
-        headers: { Accept: '*/*' },
-        responseType: 'blob',
-        signal: controller.signal,
-      });
+      let cached: Response | undefined;
+      if (cacheUrl && typeof window !== 'undefined' && window?.caches) {
+        try {
+          cached = await (await window.caches.open('storage-cache')).match(cacheUrl);
+        } catch {
+          /* Cache availability must not prevent an authorized download. */
+        }
+      }
+      if (controller.signal.aborted || controllers.get(id) !== controller) {
+        throw new DOMException('Download aborted', 'AbortError');
+      }
+      let blob: Blob;
+      if (cached) {
+        // Cached media still requires a fresh server permission check before saving.
+        await $http(url, { method: 'HEAD', headers: { Accept: '*/*' }, signal: controller.signal });
+        blob = await cached.blob();
+      } else {
+        blob = await $http<Blob>(url, {
+          headers: { Accept: '*/*' },
+          responseType: 'blob',
+          signal: controller.signal,
+        });
+      }
       if (controller.signal.aborted || controllers.get(id) !== controller) {
         throw new DOMException('Download aborted', 'AbortError');
       }

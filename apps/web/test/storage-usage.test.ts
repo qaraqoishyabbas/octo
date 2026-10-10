@@ -1,6 +1,41 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { clearChatCache, getChatCacheUsage, getDraftUsage } from '../app/utils/storage-usage.ts';
+import {
+  clearChatCache,
+  getChatCacheUsage,
+  getDraftUsage,
+  getMediaCacheUsage,
+  clearMediaCache,
+} from '../app/utils/storage-usage.ts';
+
+test('media categories can be counted and cleared independently', async () => {
+  const entries = new Map([
+    ['photo', { text: 'abc', mime: 'image/webp' }],
+    ['video', { text: 'abcde', mime: 'video/mp4' }],
+    ['file', { text: 'ab', mime: 'application/pdf' }],
+  ]);
+  const cache = {
+    keys: async () => [...entries.keys()],
+    match: async (key: string) => {
+      const entry = entries.get(key);
+      return entry
+        ? new Response(entry.text, { headers: { 'content-type': entry.mime } })
+        : undefined;
+    },
+    delete: async (key: string) => entries.delete(key),
+  };
+  const storage = {
+    keys: async () => ['storage-cache'],
+    open: async () => cache,
+  } as unknown as CacheStorage;
+  assert.deepEqual(await getMediaCacheUsage(storage), {
+    photos: { bytes: 3, count: 1 },
+    videos: { bytes: 5, count: 1 },
+    files: { bytes: 2, count: 1 },
+  });
+  await clearMediaCache(storage, ['photos']);
+  assert.deepEqual([...entries.keys()], ['video', 'file']);
+});
 
 test('counts cached bodies without fetching and clears only the requested chat cache', async () => {
   const deleted: string[] = [];

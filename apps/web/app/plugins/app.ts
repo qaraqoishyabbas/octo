@@ -1,5 +1,6 @@
 import type { NitroFetchRequest } from 'nitropack/types';
 import type { HttpFetchOptions, HttpFetchContext } from '~';
+import type { NetworkAttempt } from '../stores/network-usage';
 
 export default defineNuxtPlugin((nuxtApp) => {
   const toast = useToast();
@@ -8,6 +9,8 @@ export default defineNuxtPlugin((nuxtApp) => {
   const requestHeaders = useRequestHeaders(['x-forwarded-for', 'user-agent']);
   const locale = useCookie<string | null>('i18n-locale');
   const auth = useAuthStore();
+  const networkUsage = import.meta.client ? useNetworkUsageStore() : null;
+  const networkAttempts = new WeakMap<object, NetworkAttempt | null>();
 
   function buildHeaders(headers?: HeadersInit): Headers {
     const result = new Headers({
@@ -72,15 +75,19 @@ export default defineNuxtPlugin((nuxtApp) => {
     async onRequest(context: HttpFetchContext) {
       await callHooks(context, context.options.onFetch);
 
-      if (!isRequestWithAuth(context.options.baseURL ?? '', context.request.toString())) return;
-
-      context.options.credentials = 'omit';
-      context.options.baseURL = buildBaseURL(context.options.baseURL ?? '');
-      context.options.headers = buildHeaders(context.options.headers);
-
-      buildSecureMethod(context.options);
+      if (isRequestWithAuth(context.options.baseURL ?? '', context.request.toString())) {
+        context.options.credentials = 'omit';
+        context.options.baseURL = buildBaseURL(context.options.baseURL ?? '');
+        context.options.headers = buildHeaders(context.options.headers);
+        buildSecureMethod(context.options);
+      }
+      if (networkUsage) {
+        networkAttempts.set(context.options, networkUsage.beginAttempt(context.options.body));
+      }
     },
     async onRequestError(context: HttpFetchContext) {
+      networkUsage?.finishAttempt(networkAttempts.get(context.options), undefined, false);
+      networkAttempts.delete(context.options);
       await callHooks(context, context.options.onFetchError);
 
       if (import.meta.server || context.error.name === 'AbortError') return;
@@ -92,6 +99,12 @@ export default defineNuxtPlugin((nuxtApp) => {
       });
     },
     async onResponse(context: HttpFetchContext) {
+      networkUsage?.finishAttempt(
+        networkAttempts.get(context.options),
+        context.response._data,
+        context.response.status >= 200 && context.response.status < 400,
+      );
+      networkAttempts.delete(context.options);
       await callHooks(context, context.options.onFetchResponse);
     },
     async onResponseError(context: HttpFetchContext) {

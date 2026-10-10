@@ -20,24 +20,8 @@ type MediaMonthGroup = {
   files: MessageAttachment[];
 };
 
-const formatDuration = (duration?: number | null) => {
-  if (!duration || duration <= 0) {
-    return null;
-  }
-
-  const totalSeconds = Math.round(duration);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) {
-    return [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':');
-  }
-
-  return [minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':');
-};
-
-const isImage = (file: MessageAttachment) => file.mime_type.startsWith('image/');
+const loadedMedia = ref<Record<string, boolean>>({});
+const failedMedia = ref<Record<string, boolean>>({});
 
 const getMediaMonthKey = (file: MessageAttachment) => {
   if (!file.created_at) {
@@ -135,44 +119,24 @@ watch(
       <section v-for="group in groupedMediaFiles" :key="group.key">
         <div class="bg-elevated text-muted p-4 py-1 text-sm font-bold">{{ group.label }}</div>
         <div class="grid grid-cols-3 gap-0.5 sm:grid-cols-4">
-          <template v-for="file in group.files" :key="file.id">
-            <div
-              class="bg-muted aspect-square cursor-pointer overflow-hidden rounded-xs text-left"
-              v-if="isImage(file)"
-              @click="openMedia(file)"
-            >
-              <img
-                class="h-full w-full object-cover"
-                :src="$storage(file.path)"
-                :alt="file.original_name"
-              />
-            </div>
-            <div
-              class="bg-muted relative aspect-square cursor-pointer overflow-hidden rounded-xs"
-              v-else
-              @click="openMedia(file)"
-            >
-              <video
-                class="h-full w-full object-cover"
-                :src="$storage(file.path)"
-                :poster="file.thumbnail_path ? $storage(file.thumbnail_path) : undefined"
-                preload="metadata"
-                playsinline
-                muted
-              />
-              <span
-                class="pointer-events-none absolute top-1/2 left-1/2 flex size-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur"
-              >
-                <UIcon class="size-5" name="i-ph-play-fill" />
-              </span>
-              <span
-                class="pointer-events-none absolute right-1 bottom-1 rounded bg-black/65 px-1.5 py-0.5 text-xs font-medium text-white"
-                v-if="formatDuration(file.duration)"
-              >
-                {{ formatDuration(file.duration) }}
-              </span>
-            </div>
-          </template>
+          <div
+            class="aspect-square cursor-pointer overflow-hidden rounded-xs"
+            v-for="file in group.files"
+            :key="file.id"
+          >
+            <DialogMessagesListItemMediaTile
+              :item="file"
+              :loaded="loadedMedia[file.id]"
+              :failed="failedMedia[file.id]"
+              openable
+              @open="openMedia(file)"
+              @load="loadedMedia[file.id] = true"
+              @error="
+                failedMedia[file.id] = true;
+                loadedMedia[file.id] = true;
+              "
+            />
+          </div>
         </div>
       </section>
       <ProfileListLoading v-if="loadingMore" more />

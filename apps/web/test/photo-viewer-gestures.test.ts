@@ -5,7 +5,7 @@ import { parse } from '@vue/compiler-sfc';
 import ts from 'typescript';
 import { computed, ref, watch, nextTick } from 'vue';
 
-function viewer(reducedMotion = false, itemCount = 2) {
+function viewer(reducedMotion = false, itemCount = 2, allowAutoLoad = true) {
   const timers = new Map<number, () => void>();
   let timerId = 0;
   const source = readFileSync(
@@ -30,11 +30,12 @@ function viewer(reducedMotion = false, itemCount = 2) {
     'nextTick',
     'onBeforeUnmount',
     'useFileDownload',
+    'useMediaAutoDownloadStore',
     'window',
     'setTimeout',
     'clearTimeout',
     `${code}
-    return { onPointerDown, onPointerMove, onPointerUp, zoom, pan, selectedIndex, open, imageTransform, swipeOffset, settling, slideStyle, navigateMedia, closeViewer, onViewerKeydown };
+    return { onPointerDown, onPointerMove, onPointerUp, zoom, pan, selectedIndex, open, imageTransform, swipeOffset, settling, slideStyle, navigateMedia, closeViewer, onViewerKeydown, adjacentMedia };
   `,
   )(
     {},
@@ -50,6 +51,7 @@ function viewer(reducedMotion = false, itemCount = 2) {
     nextTick,
     () => {},
     () => ({ downloadingKey: ref(null) }),
+    () => ({ canAutoLoad: () => allowAutoLoad }),
     {
       innerWidth: 400,
       innerHeight: 800,
@@ -235,4 +237,27 @@ test('keyboard arrows animate and wrap gallery navigation while Escape closes', 
   assert.equal(view.selectedIndex.value, 0);
   view.onViewerKeydown({ key: 'Escape', preventDefault() {} });
   assert.equal(view.open.value, false);
+});
+
+test('opening media manually cannot preload gated neighbors until navigation requests them', () => {
+  const view = viewer(false, 3, false);
+  assert.deepEqual(
+    view.adjacentMedia.value.map((item: { loadAllowed: boolean }) => item.loadAllowed),
+    [false, false],
+  );
+  view.onPointerDown(pointer(1, 200));
+  view.onPointerMove(pointer(1, 100));
+  assert.deepEqual(
+    view.adjacentMedia.value.map((item: { loadAllowed: boolean }) => item.loadAllowed),
+    [false, true],
+  );
+  view.onPointerUp(pointer(1, 100));
+  view.finishAnimation();
+  assert.equal(view.selectedIndex.value, 1);
+  assert.deepEqual(
+    view.adjacentMedia.value.map((item: { loadAllowed: boolean }) => item.loadAllowed),
+    [false, false],
+  );
+  view.closeViewer();
+  assert.deepEqual(view.adjacentMedia.value, []);
 });

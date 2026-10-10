@@ -10,6 +10,7 @@ type DownloadFileOptions = {
   url: string;
   filename?: string | null;
   key?: string | number | null;
+  cacheUrl?: string;
 };
 
 function saveBlob(blob: Blob, filename: string) {
@@ -47,6 +48,7 @@ export function useFileDownload() {
         scopeId,
         options.url,
         options.key ?? options.url,
+        options.cacheUrl,
       );
       if (startedRevision !== fileDownloads.revision || !fileDownloads.scopes[scopeId])
         return false;
@@ -83,6 +85,7 @@ export function useFileDownload() {
       url: `attachments/${file.id}/download`,
       filename: file.original_name || 'file',
       key: file.id,
+      cacheUrl: file.path ? $storage(file.path) : undefined,
     });
   }
 

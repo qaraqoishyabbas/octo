@@ -11,6 +11,7 @@ const content = useProfileContentStore().createScope('files');
 const { loading, loadingMore, error, list: files } = toRefs(content.state);
 onUnmounted(content.dispose);
 const dayjs = useDayjs();
+const vMediaPrefetch = useMediaFilePrefetch();
 const { downloadingKey, downloadMessageFile } = useFileDownload();
 
 type FileMonthGroup = {
@@ -112,7 +113,7 @@ watch(
     <div class="space-y-5" v-else>
       <section v-for="group in groupedFiles" :key="group.key">
         <div class="bg-elevated text-muted p-4 py-1 text-sm font-bold">{{ group.label }}</div>
-        <div v-for="file in group.files" :key="file.id">
+        <div v-for="file in group.files" v-media-prefetch="file" :key="file.id">
           <Item
             class="group bg-transparent hover:bg-neutral-500/10"
             @click="downloadMessageFile(file)"

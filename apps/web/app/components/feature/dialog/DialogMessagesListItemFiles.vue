@@ -6,6 +6,8 @@ const props = defineProps<{
   own?: boolean;
 }>();
 
+const vMediaPrefetch = useMediaFilePrefetch();
+
 const { downloadingKey, downloadMessageFile } = useFileDownload();
 
 const documentFiles = computed(() => (props.files ?? []).filter((file) => file.type === 'file'));
@@ -24,6 +26,7 @@ const isDownloading = (file: MessageAttachment) => downloadingKey.value === file
     <Item
       class="group bg-transparent"
       v-for="file in documentFiles"
+      v-media-prefetch="file"
       :key="file.id"
       :class="props.own ? 'hover:bg-primary/10' : 'hover:bg-neutral-500/10'"
       @click="downloadMessageFile(file)"

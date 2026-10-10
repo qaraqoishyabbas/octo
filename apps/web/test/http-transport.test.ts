@@ -21,6 +21,7 @@ test('HTTP transport preserves Headers overrides, bearer authentication and mult
     'useCookie',
     'useAuthStore',
     '$fetch',
+    'useNetworkUsageStore',
     code,
   )(
     {},
@@ -36,6 +37,7 @@ test('HTTP transport preserves Headers overrides, bearer authentication and mult
         options = value;
       },
     },
+    () => ({ beginAttempt: () => null, finishAttempt: () => {} }),
   );
   const context = {
     request: 'attachments/file/download',

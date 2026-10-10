@@ -48,6 +48,8 @@ const zoom = ref(1);
 const rotation = ref(0);
 const pan = ref({ x: 0, y: 0 });
 const dragStart = ref<{ x: number; y: number; panX: number; panY: number } | null>(null);
+const autoDownload = useMediaAutoDownloadStore();
+const requestedAdjacent = ref<1 | -1 | null>(null);
 const swipeOffset = ref({ x: 0, y: 0 });
 const settling = ref(false);
 const dragging = ref(false);
@@ -62,10 +64,15 @@ const slideStyle = computed(() => ({
 }));
 const adjacentMedia = computed(() => {
   const total = mediaItems.value.length;
-  if (total <= 1) return [];
+  if (!open.value || total <= 1) return [];
   return ([-1, 1] as const).map((direction) => ({
     direction,
     item: mediaItems.value[(selectedIndex.value + direction + total) % total]!,
+    loadAllowed:
+      requestedAdjacent.value === direction ||
+      autoDownload.canAutoLoad(
+        mediaItems.value[(selectedIndex.value + direction + total) % total]!,
+      ),
   }));
 });
 const pointers = new Map<number, { x: number; y: number }>();
@@ -98,12 +105,16 @@ function settleTo(offset: { x: number; y: number }, complete?: () => void) {
     settleTimer = null;
     settling.value = false;
     if (complete) complete();
-    else swipeOffset.value = { x: 0, y: 0 };
+    else {
+      swipeOffset.value = { x: 0, y: 0 };
+      requestedAdjacent.value = null;
+    }
   }, slideDuration);
 }
 
 function resetView() {
   cancelSettling();
+  requestedAdjacent.value = null;
   dragging.value = false;
   swipeOffset.value = { x: 0, y: 0 };
   zoom.value = 1;
@@ -124,6 +135,7 @@ function navigateMedia(direction: 1 | -1) {
   const total = mediaItems.value.length;
   if (!open.value || total <= 1 || settling.value) return;
   viewportWidth.value = import.meta.client ? window.innerWidth : 0;
+  requestedAdjacent.value = direction;
   // Reset zoom before sliding so the incoming media has its natural dimensions.
   zoom.value = 1;
   pan.value = { x: 0, y: 0 };
@@ -176,6 +188,7 @@ function onPointerDown(event: PointerEvent) {
   pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
   if (pointers.size > 1) {
     wasPinching = true;
+    requestedAdjacent.value = null;
     swipeOffset.value = { x: 0, y: 0 };
     pinchStart = { distance: pointerDistance(), zoom: zoom.value };
     dragStart.value = null;
@@ -209,6 +222,9 @@ function onPointerMove(event: PointerEvent) {
     if (wasPinching || event.pointerType === 'mouse') return;
     const x = event.clientX - dragStart.value.x;
     const y = event.clientY - dragStart.value.y;
+    if (canNavigateMedia.value && Math.abs(x) > Math.abs(y) && Math.abs(x) >= 10) {
+      requestedAdjacent.value = x < 0 ? 1 : -1;
+    }
     swipeOffset.value =
       Math.abs(x) > Math.abs(y)
         ? { x: canNavigateMedia.value ? x : x * 0.2, y: 0 }
@@ -465,7 +481,10 @@ onBeforeUnmount(() => {
           >
             <img
               class="max-h-full max-w-full object-contain"
-              v-if="adjacent.item.mime_type?.startsWith('image/') || adjacent.item.thumbnail_path"
+              v-if="
+                adjacent.loadAllowed &&
+                (adjacent.item.mime_type?.startsWith('image/') || adjacent.item.thumbnail_path)
+              "
               :src="
                 $storage(
                   adjacent.item.mime_type?.startsWith('image/')
@@ -480,7 +499,7 @@ onBeforeUnmount(() => {
           <div class="flex h-full w-full items-center justify-center" :style="slideStyle">
             <img
               class="photo-viewer-image max-h-full max-w-full object-contain"
-              v-if="isSelectedImage && selectedMedia"
+              v-if="open && isSelectedImage && selectedMedia"
               :class="{ 'photo-viewer-image--active': dragging }"
               :src="$storage(selectedMedia.path)"
               :alt="selectedMedia.original_name"
@@ -489,7 +508,7 @@ onBeforeUnmount(() => {
             />
             <video
               class="max-h-full max-w-full"
-              v-else-if="isSelectedVideo && selectedMedia"
+              v-else-if="open && isSelectedVideo && selectedMedia"
               :src="$storage(selectedMedia.path)"
               :poster="
                 selectedMedia.thumbnail_path ? $storage(selectedMedia.thumbnail_path) : undefined
