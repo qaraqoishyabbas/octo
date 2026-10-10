@@ -235,18 +235,23 @@ export const useMessagesStore = defineStore('messages', () => {
   const retryInitial = async () =>
     loadHistory(lastHistoryRequests.get('initial') ?? { direction: 'initial' });
 
-  const appendMessage = async (message: ChatMessage) => {
+  const appendMessage = (message: ChatMessage) => {
     if (list.value.some((item) => item.id === message.id)) {
       scrollToMessage(message.id, false, 'end');
       return;
     }
 
     if (newerCursor.value) {
-      await loadAroundMessage(message.id, false, 'end');
+      // Keep the history window intact; its newer cursor will load the sent
+      // message in chronological order when the user reaches the latest page.
       return;
     }
 
-    applyWindow(reconcileCreatedMessage(getWindow(), message, MAX_MESSAGES));
+    const nextWindow = reconcileCreatedMessage(getWindow(), message, MAX_MESSAGES);
+    list.value.push(message);
+    const overflow = list.value.length - MAX_MESSAGES;
+    if (overflow > 0) list.value.splice(0, overflow);
+    olderCursor.value = nextWindow.olderCursor;
     scrollToMessage(message.id, false, 'end');
   };
 
@@ -474,12 +479,11 @@ export const useMessagesStore = defineStore('messages', () => {
         return null;
       }
 
-      await appendMessage(createdMessage);
-      if (replyMessage.value === sentReply) replyMessage.value = null;
-
       const currentDialog = dialog.current?.dialog_id === dialogId ? dialog.current : null;
 
       if (currentDialog) {
+        appendMessage(createdMessage);
+        if (replyMessage.value === sentReply) replyMessage.value = null;
         if (currentDialog.type === 'D' && createdMessage.dialog_id) {
           currentDialog.id = createdMessage.dialog_id;
         }

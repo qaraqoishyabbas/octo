@@ -306,3 +306,71 @@ test('sending a message keeps a new reply selected while the request was pending
 
   assert.equal(messages.replyMessage?.id, '2');
 });
+
+test('sending at the latest messages appends in place without reloading history', async () => {
+  const messages = freshStore();
+  messages.loading = false;
+  messages.list = [message('1')];
+  const list = messages.list;
+  const original = messages.list[0];
+  const calls: HttpCall[] = [];
+  http = async (path, options) => {
+    calls.push({ path, options });
+    return { ok: true, data: message('2') } as unknown as MessagesPage;
+  };
+
+  await messages.send('<p>New message</p>');
+
+  assert.equal(calls.length, 1);
+  assert.equal((calls[0]?.options as { method: string }).method, 'POST');
+  assert.equal(messages.list, list);
+  assert.equal(messages.list[0], original);
+  assert.deepEqual(
+    messages.list.map(({ id }) => id),
+    ['1', '2'],
+  );
+  assert.equal(messages.loading, false);
+});
+
+test('sending while reading older history preserves the window and viewport intent', async () => {
+  const messages = freshStore();
+  messages.loading = false;
+  messages.list = [message('1')];
+  messages.newerCursor = 'more-history';
+  const list = messages.list;
+  let requests = 0;
+  http = async () => {
+    requests += 1;
+    return { ok: true, data: message('9') } as unknown as MessagesPage;
+  };
+
+  const sent = await messages.send('<p>New message</p>');
+
+  assert.equal(sent?.id, '9');
+  assert.equal(requests, 1);
+  assert.equal(messages.list, list);
+  assert.deepEqual(
+    messages.list.map(({ id }) => id),
+    ['1'],
+  );
+  assert.equal(messages.newerCursor, 'more-history');
+  assert.equal(messages.scrollIntent, null);
+  assert.equal(messages.loading, false);
+});
+
+test('a send finishing after changing dialogs does not replace the new dialog messages', async () => {
+  const messages = freshStore();
+  const pending = deferred<{ ok: boolean; data: ChatMessage }>();
+  http = async () => pending.promise as unknown as MessagesPage;
+  const sending = messages.send('<p>Original dialog</p>');
+  dialog.current.dialog_id = 'dialog-2';
+  messages.list = [message('3', 'dialog-2')];
+  pending.resolve({ ok: true, data: message('2', 'dialog-1') });
+  await sending;
+
+  assert.deepEqual(
+    messages.list.map(({ id }) => id),
+    ['3'],
+  );
+  assert.equal(messages.scrollIntent, null);
+});
