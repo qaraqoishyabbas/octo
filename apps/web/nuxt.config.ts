@@ -105,7 +105,9 @@ export default defineNuxtConfig({
                 cachedResponseWillBeUsed: async ({ request, cachedResponse }) => {
                   if (
                     cachedResponse?.type === 'opaque' &&
-                    (request.headers.has('range') || request.destination === 'video')
+                    (request.mode === 'cors' ||
+                      request.headers.has('range') ||
+                      request.destination === 'video')
                   )
                     return null;
                   return cachedResponse;

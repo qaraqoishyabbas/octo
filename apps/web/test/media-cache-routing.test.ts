@@ -61,12 +61,18 @@ test('opaque cached videos bypass installed Workbox range slicing while readable
   const partial = await rangePlugin.cachedResponseWillBeUsed({ request, cachedResponse: full });
   assert.equal(partial!.status, 206);
   assert.equal(await partial!.text(), 'abc');
-  const imageRequest = new Request('https://api.example/storage/image.png');
+  const imageRequest = new Request('https://api.example/storage/image.png', { mode: 'no-cors' });
   assert.equal(
     await guard.cachedResponseWillBeUsed({ request: imageRequest, cachedResponse: opaque }),
     opaque,
   );
   assert.equal(await guard.cacheWillUpdate({ request: imageRequest, response: opaque }), opaque);
+  const corsImageRequest = new Request(imageRequest.url, { mode: 'cors' });
+  assert.equal(
+    await guard.cachedResponseWillBeUsed({ request: corsImageRequest, cachedResponse: opaque }),
+    null,
+    'readable photo fetch must bypass an old opaque image cache',
+  );
   const videoRequest = new Request('https://api.example/storage/video.mp4');
   Object.defineProperty(videoRequest, 'destination', { value: 'video' });
   assert.equal(await guard.cacheWillUpdate({ request: videoRequest, response: opaque }), null);

@@ -189,7 +189,8 @@ export const useMediaAutoDownloadStore = defineStore('media-auto-download', () =
       const cache = await window.caches.open('storage-cache');
       if (controller.signal.aborted || startedAccount !== accountId.value) return false;
       const cached = await cache.match(url);
-      if (cached?.status === 200 || cached?.type === 'opaque') return true;
+      // Opaque responses hide their body and size; retry with CORS to replace them.
+      if (cached?.status === 200) return true;
       if (!canAutoLoad(file) || controller.signal.aborted) return false;
       let responseStatus = 200;
       const blob = await $http<Blob>(url, {

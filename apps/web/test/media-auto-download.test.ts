@@ -25,6 +25,37 @@ const photo = { mime_type: 'image/jpeg', type: 'media', size: 2 * 1024 ** 2 };
 const video = { mime_type: 'video/mp4', type: 'media', size: 12 * 1024 ** 2 };
 const document = { mime_type: 'application/pdf', type: 'file', size: 3 * 1024 ** 2 };
 
+test('opaque photo cache is replaced with a readable body whose size can be measured', async () => {
+  const settings = await store();
+  let cached = { type: 'opaque', status: 0 } as Response;
+  let requests = 0;
+  Object.assign(globalThis.window, {
+    caches: {
+      open: async () => ({
+        match: async () => cached,
+        put: async (_url: string, response: Response) => {
+          cached = response;
+        },
+      }),
+    },
+  });
+  const originalHttp = globalThis.$http;
+  globalThis.$http = async () => {
+    requests++;
+    return new Blob(['photo'], { type: 'image/png' });
+  };
+  try {
+    assert.equal(await settings.prefetch(photo, 'https://api.example/storage/photo.png'), true);
+    assert.equal(requests, 1);
+    assert.equal(cached.status, 200);
+    assert.equal((await cached.blob()).size, 5);
+    await settings.prefetch(photo, 'https://api.example/storage/photo.png');
+    assert.equal(requests, 1);
+  } finally {
+    globalThis.$http = originalHttp;
+  }
+});
+
 async function store() {
   if (activePinia) disposePinia(activePinia);
   auth.user.id = 'a';
