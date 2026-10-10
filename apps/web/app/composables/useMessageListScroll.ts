@@ -276,6 +276,11 @@ export function useMessageListScroll(options: MessageListScrollOptions) {
     const snapshot = stableSnapshot;
     resizeFrame = window.requestAnimationFrame(() => {
       resizeFrame = null;
+      // Reconnecting observers also emits resize notifications. Restoring the
+      // old viewport here would cancel an explicit smooth jump to a message.
+      if (activeProgrammaticScroll === 'message') {
+        return;
+      }
       if (bottomLocked) {
         scrollToBottom('auto');
       } else {
