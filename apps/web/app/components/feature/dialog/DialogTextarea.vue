@@ -296,6 +296,37 @@ const selectUploads = (files: FileList | File[], type: UploadType = 'media') => 
     .open();
 };
 
+const onPaste = (event: ClipboardEvent) => {
+  if (
+    !canWriteMessage.value ||
+    messages.sending ||
+    isEditingMessage.value ||
+    event.defaultPrevented
+  ) {
+    return;
+  }
+
+  const clipboard = event.clipboardData;
+  if (!clipboard) {
+    return;
+  }
+
+  const files = Array.from(clipboard.files);
+  if (files.length === 0) {
+    for (const item of Array.from(clipboard.items)) {
+      const file = item.kind === 'file' ? item.getAsFile() : null;
+      if (file) files.push(file);
+    }
+  }
+  if (files.length === 0) {
+    return;
+  }
+
+  event.preventDefault();
+  event.stopPropagation();
+  selectUploads(files, files.every(isMediaFile) ? 'media' : 'file');
+};
+
 const getUploadDropZone = (event: DragEvent) => {
   return event.clientY < window.innerHeight / 2 ? 'files' : 'media';
 };
@@ -694,6 +725,7 @@ onBeforeUnmount(() => {
   <div
     class="sticky right-0 bottom-0 left-0 z-20"
     data-dialog-textarea
+    @paste.capture="onPaste"
     @dragenter="onDragEnter"
     @dragover="onDragOver"
     @dragleave="onDragLeave"
