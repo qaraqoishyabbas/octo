@@ -19,6 +19,14 @@ const trafficLevel = computed({
     });
   },
 });
+const selectedTrafficLabel = computed(
+  () =>
+    [
+      'Низкий (фото (10 МБ))',
+      'Средний (фото (10 МБ), видео (15 МБ))',
+      'Высокий (фото (15 МБ), видео (20 МБ))',
+    ][trafficLevel.value - 1],
+);
 </script>
 
 <template>
@@ -82,11 +90,9 @@ const trafficLevel = computed({
                 aria-label="Расход трафика"
               />
             </div>
-            <ul class="text-muted px-3 py-2 text-xs">
-              <li class="">Низкий: фото (10 МБ)</li>
-              <li class="">Средний: фото (10 МБ), видео (15 МБ)</li>
-              <li class="">Высокий: фото (15 МБ), видео (20 МБ)</li>
-            </ul>
+            <p class="text-muted px-3 py-2 text-sm">
+              Выбран: <span class="text-primary">{{ selectedTrafficLabel }}</span>
+            </p>
           </div>
         </section>
         <p class="text-muted px-3 text-sm">
