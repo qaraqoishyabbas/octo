@@ -27,7 +27,6 @@ export default defineNuxtConfig({
   },
   modules: [
     '@vite-pwa/nuxt',
-    '@nuxt/image',
     '@nuxt/ui',
     '@nuxtjs/i18n',
     '@pinia/nuxt',
@@ -134,16 +133,6 @@ export default defineNuxtConfig({
     },
     devOptions: {
       enabled: false,
-    },
-  },
-
-  image: {
-    // In Docker Nuxt runs in a separate container, so IPX cannot reliably fetch
-    // localhost resources from Laravel. Use direct image URLs instead.
-    provider: 'none',
-    domains: [import.meta.env.APP_URL || 'http://127.0.0.1:8000'],
-    alias: {
-      api: import.meta.env.APP_URL || 'http://127.0.0.1:8000',
     },
   },
 

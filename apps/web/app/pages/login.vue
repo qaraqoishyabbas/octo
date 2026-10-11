@@ -54,7 +54,7 @@ onBeforeUnmount(() => window.removeEventListener('message', handleMessage));
           Войдите в свою учетную запись <span class="text-primary font-black">Octo</span>
         </div>
         <div class="text-muted mt-1 text-base text-pretty">
-          Ваше рабочее пространство с искусственным интеллектом.
+          Ваши чаты, группы и каналы в одном месте.
         </div>
       </div>
       <div class="flex flex-col space-y-4">
