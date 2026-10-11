@@ -2,6 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createPinia, setActivePinia, disposePinia } from 'pinia';
 import { reactive, nextTick } from 'vue';
+import { readFileSync } from 'node:fs';
+import { parse } from '@vue/compiler-sfc';
+import { compile } from '@vue/compiler-dom';
+import * as Vue from 'vue';
+import { renderToString } from '@vue/server-renderer';
+import ts from 'typescript';
 
 const saved = new Map<string, string>();
 const auth = reactive({ user: { id: 'a' } });
@@ -22,8 +28,231 @@ Object.assign(globalThis, { useAuthStore: () => auth, window: browserWindow });
 Object.defineProperty(globalThis, 'navigator', { configurable: true, value: browserNavigator });
 let activePinia: ReturnType<typeof createPinia> | undefined;
 const photo = { mime_type: 'image/jpeg', type: 'media', size: 2 * 1024 ** 2 };
-const video = { mime_type: 'video/mp4', type: 'media', size: 12 * 1024 ** 2 };
+const video = { mime_type: 'video/mp4', type: 'media', size: 18 * 1024 ** 2 };
 const document = { mime_type: 'application/pdf', type: 'file', size: 3 * 1024 ** 2 };
+
+async function settingsControls(settings: Awaited<ReturnType<typeof store>>, profile = 'mobile') {
+  const source = readFileSync(
+    new URL('../app/components/feature/setting/SettingDataAutoDownload.vue', import.meta.url),
+    'utf8',
+  );
+  const { descriptor } = parse(source);
+  const script = descriptor.scriptSetup!.content;
+  const bindings = [...script.matchAll(/^(?:const|function) (\w+)/gm)].map((match) => match[1]);
+  const code = ts.transpileModule(script, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS },
+  }).outputText;
+  const state = new Function(
+    'exports',
+    'defineProps',
+    'defineEmits',
+    'computed',
+    'useMediaAutoDownloadStore',
+    `${code}; return { ${bindings.join(', ')} };`,
+  )(
+    {},
+    () => ({ profile }),
+    () => () => {},
+    Vue.computed,
+    () => settings,
+  );
+  const render = new Function(
+    'Vue',
+    compile(descriptor.template!.content, { mode: 'function', prefixIdentifiers: true }).code,
+  )(Vue);
+  const controls: Record<string, Record<string, any>> = {};
+  const app = Vue.createSSRApp({ setup: () => state, render });
+  for (const name of ['USlideover', 'AppBar', 'UButton', 'USwitch', 'USlider']) {
+    app.component(name, {
+      setup(_props, { attrs, slots }) {
+        if (['UButton', 'USwitch', 'USlider'].includes(name) && !attrs.icon) controls[name] = attrs;
+        return () =>
+          Vue.h(
+            'div',
+            Object.values(slots).flatMap((slot) => slot?.()),
+          );
+      },
+    });
+  }
+  await renderToString(app);
+  return controls;
+}
+
+test('new accounts use medium mobile and high Wi-Fi auto-download limits', async () => {
+  const settings = await store();
+  assert.equal((await settingsControls(settings)).USlider.modelValue, 2);
+  assert.equal((await settingsControls(settings, 'wifi')).USlider.modelValue, 3);
+  assert.equal(settings.canAutoLoad({ ...video, size: 15 * 1024 ** 2 }), true);
+  assert.equal(settings.canAutoLoad({ ...video, size: 16 * 1024 ** 2 }), false);
+  assert.equal(settings.canAutoLoad(document), false);
+  connection.type = 'wifi';
+  connection.dispatchEvent(new Event('change'));
+  assert.equal(settings.canAutoLoad({ ...video, size: 20 * 1024 ** 2 }), true);
+  assert.equal(settings.canAutoLoad({ ...video, size: 21 * 1024 ** 2 }), false);
+  assert.equal(settings.canAutoLoad({ ...photo, size: 15 * 1024 ** 2 }), true);
+  assert.equal(settings.canAutoLoad({ ...photo, size: 16 * 1024 ** 2 }), false);
+});
+
+test('reset button restores both profiles and persists only the current account defaults', async () => {
+  const settings = await store();
+  settings.updateProfile('mobile', { enabled: false });
+  const accountA = saved.get('octo:media-auto-download:v1:a');
+  auth.user.id = 'b';
+  settings.updateProfile('mobile', { enabled: false, photos: { maxSizeMb: 2 } });
+  settings.updateProfile('wifi', { enabled: false, videos: { enabled: false } });
+  const source = readFileSync(
+    new URL('../app/components/feature/setting/SettingDataStorage.vue', import.meta.url),
+    'utf8',
+  );
+  const { descriptor } = parse(source);
+  const template = descriptor.template!.content;
+  const script = ts.createSourceFile(
+    'settings.ts',
+    descriptor.scriptSetup!.content,
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const resetDeclaration = script.statements.find(
+    (node) =>
+      ts.isVariableStatement(node) &&
+      node.declarationList.declarations.some(
+        (declaration) => declaration.name.getText(script) === 'requestReset',
+      ),
+  );
+  let confirmation: { onConfirm: () => void; onCancel?: () => void } | undefined;
+  const code = ts.transpileModule(resetDeclaration?.getText(script) ?? '', {}).outputText;
+  const requestReset = new Function(
+    'auth',
+    'confirm',
+    'autoDownload',
+    `${code}; return typeof requestReset === 'undefined' ? undefined : requestReset;`,
+  )(
+    auth,
+    (options: typeof confirmation) => {
+      confirmation = options;
+    },
+    settings,
+  );
+  const render = new Function(
+    'Vue',
+    compile(template, { mode: 'function', prefixIdentifiers: true }).code,
+  )(Vue);
+  let resetButton: Record<string, any> | undefined;
+  const app = Vue.createSSRApp({
+    setup: () => ({
+      autoDownload: settings,
+      requestReset,
+      memory: { loading: false, totalUsage: 0 },
+      network: { totalBytes: 0 },
+      formatCacheUsage: () => '',
+      formatStorageBytes: () => '',
+    }),
+    render,
+  });
+  for (const name of ['USlideover', 'AppBar', 'UButton']) {
+    app.component(name, {
+      setup(_props, { attrs, slots }) {
+        if (attrs.label === 'Сбросить настройки') resetButton = attrs;
+        return () =>
+          Vue.h(
+            'div',
+            Object.values(slots).flatMap((slot) => slot?.()),
+          );
+      },
+    });
+  }
+  await renderToString(app);
+  assert.equal(typeof resetButton?.onClick, 'function');
+  const before = JSON.stringify(settings.profiles);
+  const savedBefore = saved.get('octo:media-auto-download:v1:b');
+  resetButton!.onClick();
+  assert.equal(JSON.stringify(settings.profiles), before);
+  assert.equal(saved.get('octo:media-auto-download:v1:b'), savedBefore);
+  assert.ok(confirmation);
+  confirmation.onCancel?.();
+  assert.equal(JSON.stringify(settings.profiles), before);
+  auth.user.id = 'a';
+  confirmation.onConfirm();
+  assert.equal(settings.profiles.mobile.enabled, false);
+  assert.equal(saved.get('octo:media-auto-download:v1:a'), accountA);
+  auth.user.id = 'b';
+  resetButton!.onClick();
+  confirmation.onConfirm();
+  assert.equal(settings.profiles.mobile.enabled, true);
+  assert.equal(settings.profiles.wifi.enabled, true);
+  assert.equal((await settingsControls(settings)).USlider.modelValue, 2);
+  assert.equal((await settingsControls(settings, 'wifi')).USlider.modelValue, 3);
+  assert.equal(settings.canAutoLoad({ ...video, size: 15 * 1024 ** 2 }), true);
+  assert.equal(saved.get('octo:media-auto-download:v1:a'), accountA);
+  disposePinia(activePinia!);
+  activePinia = createPinia();
+  setActivePinia(activePinia);
+  const { useMediaAutoDownloadStore } = await import('../app/stores/media-auto-download.ts');
+  const restored = useMediaAutoDownloadStore();
+  assert.equal(restored.profiles.mobile.enabled, true);
+  assert.equal(restored.profiles.mobile.photos.maxSizeMb, 10);
+  assert.equal(restored.profiles.mobile.videos.maxSizeMb, 15);
+  assert.equal(restored.profiles.wifi.videos.maxSizeMb, 20);
+  auth.user.id = 'a';
+  assert.equal(restored.profiles.mobile.enabled, false);
+});
+
+test('traffic slider applies the displayed media limits and restores the saved selection', async () => {
+  const settings = await store();
+  let controls = await settingsControls(settings);
+  assert.equal(typeof controls.USlider['onUpdate:modelValue'], 'function');
+  for (const [level, photoLimit, videoLimit] of [
+    [1, 10, 0],
+    [2, 10, 15],
+    [3, 15, 20],
+  ]) {
+    controls.USlider['onUpdate:modelValue'](level);
+    assert.equal(settings.canAutoLoad({ ...photo, size: photoLimit * 1024 ** 2 }), true);
+    assert.equal(settings.canAutoLoad({ ...photo, size: (photoLimit + 1) * 1024 ** 2 }), false);
+    assert.equal(
+      settings.canAutoLoad({ ...video, size: Math.max(videoLimit, 1) * 1024 ** 2 }),
+      level !== 1,
+    );
+    assert.equal(settings.canAutoLoad({ ...video, size: (videoLimit + 1) * 1024 ** 2 }), false);
+    assert.equal(settings.canAutoLoad(document), false);
+    assert.equal(settings.profiles.wifi.files.enabled, false);
+    controls = await settingsControls(settings);
+    assert.equal(controls.USlider.modelValue, level);
+  }
+  auth.user.id = 'b';
+  auth.user.id = 'a';
+  controls = await settingsControls(settings);
+  assert.equal(controls.USlider.modelValue, 3);
+  assert.equal(settings.canAutoLoad({ ...video, size: 20 * 1024 ** 2 }), true);
+});
+
+test('auto-download row toggles the profile and disables the slider without losing its level', async () => {
+  const settings = await store();
+  let controls = await settingsControls(settings, 'wifi');
+  assert.equal(typeof controls.UButton.onClick, 'function');
+  controls.UButton.onClick();
+  assert.equal(settings.profiles.wifi.enabled, false);
+  assert.equal(settings.profiles.mobile.enabled, true);
+  controls = await settingsControls(settings, 'wifi');
+  assert.equal(controls.USwitch['model-value'], false);
+  assert.equal(controls.USlider.disabled, true);
+  const level = controls.USlider.modelValue;
+  controls.USlider['onUpdate:modelValue'](1);
+  assert.equal((await settingsControls(settings, 'wifi')).USlider.modelValue, level);
+  let stopped = false;
+  controls.USwitch.onClick({
+    stopPropagation() {
+      stopped = true;
+    },
+  });
+  assert.equal(stopped, true);
+  assert.equal(settings.profiles.wifi.enabled, false);
+  controls.USwitch['onUpdate:modelValue'](true);
+  controls = await settingsControls(settings, 'wifi');
+  assert.equal(settings.profiles.wifi.enabled, true);
+  assert.equal(controls.USlider.disabled, false);
+  assert.equal(controls.USlider.modelValue, level);
+});
 
 test('opaque photo cache is replaced with a readable body whose size can be measured', async () => {
   const settings = await store();
@@ -90,7 +319,7 @@ test('auto-load follows active connection, per-type switches and size limits', a
   connection.dispatchEvent(new Event('change'));
   await nextTick();
   assert.equal(settings.activeProfile, 'mobile');
-  assert.equal(settings.canAutoLoad(document), true);
+  assert.equal(settings.canAutoLoad(document), false);
   assert.equal(settings.canAutoLoad({ ...photo, type: 'file', size: 11 * 1024 ** 2 }), false);
   assert.equal(settings.canAutoLoad({ ...photo, size: Number.NaN }), false);
 });
@@ -130,6 +359,7 @@ test('corrupt saved settings leave usable defaults and invalid limits cannot dis
 
 test('eligible files prefetch to cache, disabled or oversized files never fetch', async () => {
   const settings = await store();
+  settings.updateProfile('mobile', { files: { enabled: true } });
   const cached = new Map<string, Response>();
   const requests: string[] = [];
   const cache = {
@@ -161,6 +391,7 @@ test('eligible files prefetch to cache, disabled or oversized files never fetch'
 
 test('account switch aborts pending file prefetch and prevents stale cache writes', async () => {
   const settings = await store();
+  settings.updateProfile('mobile', { files: { enabled: true } });
   const writes: string[] = [];
   Object.assign(globalThis.window, {
     caches: {
@@ -196,6 +427,7 @@ test('account switch aborts pending file prefetch and prevents stale cache write
 
 test('turning auto-download off aborts the active prefetch', async () => {
   const settings = await store();
+  settings.updateProfile('mobile', { files: { enabled: true } });
   Object.assign(globalThis.window, {
     caches: {
       open: async () => ({

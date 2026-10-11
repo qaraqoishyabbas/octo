@@ -1,18 +1,24 @@
 <script setup lang="ts">
-import type { AutoDownloadKind, AutoDownloadProfile } from '~/stores/media-auto-download';
+import type { AutoDownloadProfile } from '~/stores/media-auto-download';
 const props = defineProps<{ profile: AutoDownloadProfile }>();
 const emit = defineEmits<{ close: [boolean] }>();
 const settings = useMediaAutoDownloadStore();
 const title = computed(() => (props.profile === 'mobile' ? 'Через мобильную сеть' : 'Через Wi-Fi'));
 const profile = computed(() => settings.profiles[props.profile]);
-const mediaKinds: { kind: AutoDownloadKind; label: string; icon: string }[] = [
-  { kind: 'photos', label: 'Фото', icon: 'i-ph-image-bold' },
-  { kind: 'videos', label: 'Видео', icon: 'i-ph-video-bold' },
-  { kind: 'files', label: 'Файлы', icon: 'i-ph-file-bold' },
-];
-function updateLimit(kind: AutoDownloadKind, value: number) {
-  settings.updateProfile(props.profile, { [kind]: { maxSizeMb: value } });
-}
+const trafficLevel = computed({
+  get() {
+    if (!profile.value.videos.enabled) return 1;
+    return profile.value.photos.maxSizeMb <= 10 && profile.value.videos.maxSizeMb <= 15 ? 2 : 3;
+  },
+  set(value: number) {
+    if (![1, 2, 3].includes(value) || !profile.value.enabled) return;
+    settings.updateProfile(props.profile, {
+      photos: { enabled: true, maxSizeMb: value === 3 ? 15 : 10 },
+      videos: { enabled: value !== 1, maxSizeMb: value === 3 ? 20 : 15 },
+      files: { enabled: false },
+    });
+  },
+});
 </script>
 
 <template>
@@ -32,65 +38,56 @@ function updateLimit(kind: AutoDownloadKind, value: number) {
         <template #center>{{ title }}</template>
       </AppBar>
       <div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-2.5 pb-4">
-        <section class="bg-elevated rounded-md p-4">
-          <USwitch
-            :model-value="profile.enabled"
-            label="Автозагрузка медиа"
-            size="xl"
-            @update:model-value="settings.updateProfile(props.profile, { enabled: $event })"
-          />
-        </section>
         <section>
-          <div class="px-3 py-1 text-base font-bold">Что загружать автоматически</div>
-          <div class="bg-elevated divide-default divide-y rounded-md">
-            <div class="space-y-3 p-4" v-for="entry in mediaKinds" :key="entry.kind">
-              <div class="flex items-center gap-3">
-                <UIcon class="size-5 shrink-0" :name="entry.icon" />
+          <div class="bg-elevated rounded-md">
+            <UButton
+              class="justify-between"
+              as="div"
+              block
+              size="xl"
+              color="neutral"
+              variant="soft"
+              label="Автозагрузка медиа"
+              @click="settings.updateProfile(props.profile, { enabled: !profile.enabled })"
+            >
+              <template v-slot:trailing>
                 <USwitch
-                  class="flex-1"
-                  :model-value="profile[entry.kind].enabled"
-                  :label="entry.label"
-                  :disabled="!profile.enabled"
-                  @update:model-value="
-                    settings.updateProfile(props.profile, { [entry.kind]: { enabled: $event } })
-                  "
+                  :model-value="profile.enabled"
+                  aria-label="Автозагрузка медиа"
+                  size="xl"
+                  checked-icon="i-ph-check-bold"
+                  unchecked-icon="i-ph-x-bold"
+                  @click.stop
+                  @update:model-value="settings.updateProfile(props.profile, { enabled: $event })"
                 />
-              </div>
-              <div class="flex items-center justify-between gap-3">
-                <label
-                  class="text-muted text-sm"
-                  :for="`auto-download-${props.profile}-${entry.kind}`"
-                  >До, МБ</label
-                >
-                <UInputNumber
-                  class="w-40"
-                  :id="`auto-download-${props.profile}-${entry.kind}`"
-                  :model-value="profile[entry.kind].maxSizeMb"
-                  :min="1"
-                  :max="2000"
-                  :step="1"
-                  :disabled="!profile.enabled || !profile[entry.kind].enabled"
-                  @update:model-value="updateLimit(entry.kind, $event)"
-                />
-              </div>
-            </div>
+              </template>
+            </UButton>
           </div>
         </section>
-        <section class="bg-elevated space-y-3 rounded-md p-4">
-          <div class="font-semibold">Текущая сеть</div>
-          <p class="text-muted text-sm" v-if="!settings.detectedProfile">
-            Браузер не определяет тип сети. Применяются настройки мобильной сети.
-          </p>
-          <p class="text-muted text-sm" v-else>
-            Применяются настройки:
-            {{ settings.activeProfile === 'mobile' ? 'мобильная сеть' : 'Wi-Fi' }}.
-          </p>
-          <p class="text-muted text-sm" v-if="!settings.isOnline">
-            Нет подключения к сети: автозагрузка приостановлена.
-          </p>
-          <p class="text-muted text-sm" v-if="settings.dataSaver">
-            В браузере включена экономия трафика: автозагрузка приостановлена.
-          </p>
+        <section>
+          <div class="px-3 py-1 text-base font-bold">Расход трафика</div>
+          <div class="bg-elevated rounded-md">
+            <div class="flex flex-col space-y-4 px-3 py-2">
+              <div class="flex w-full justify-between">
+                <span class="text-muted text-xs">Низкий</span>
+                <span class="text-muted text-xs">Средний</span>
+                <span class="text-muted text-xs">Высокий</span>
+              </div>
+              <USlider
+                v-model="trafficLevel"
+                :disabled="!profile.enabled"
+                :step="1"
+                :max="3"
+                :min="1"
+                aria-label="Расход трафика"
+              />
+            </div>
+            <ul class="text-muted px-3 py-2 text-xs">
+              <li class="">Низкий: фото (10 МБ)</li>
+              <li class="">Средний: фото (10 МБ), видео (15 МБ)</li>
+              <li class="">Высокий: фото (15 МБ), видео (20 МБ)</li>
+            </ul>
+          </div>
         </section>
         <p class="text-muted px-3 text-sm">
           Настройки сохраняются для этого аккаунта на устройстве. Файлы загружаются в кэш, без

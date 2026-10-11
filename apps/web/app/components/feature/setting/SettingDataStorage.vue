@@ -4,6 +4,7 @@ import {
   SettingDataNetwork,
   SettingDataMobile,
   SettingDataWifi,
+  Theme,
 } from '#components';
 import { formatStorageBytes, formatCacheUsage } from '~/utils/storage-usage';
 
@@ -12,6 +13,22 @@ const overlay = useOverlay();
 const memory = useStorageUsageStore();
 const network = useNetworkUsageStore();
 const autoDownload = useMediaAutoDownloadStore();
+const auth = useAuthStore();
+const { confirm } = useConfirm();
+
+const requestReset = () => {
+  const userId = String(auth.user?.id ?? '');
+  confirm({
+    title: 'Сбросить настройки автозагрузки?',
+    description: 'Для Wi-Fi будет установлен высокий расход трафика, для мобильной сети — средний.',
+    confirmButtonText: 'Сбросить',
+    confirmButtonColor: 'error',
+    onConfirm: () => {
+      if (String(auth.user?.id ?? '') !== userId) return;
+      autoDownload.resetProfiles();
+    },
+  });
+};
 
 onMounted(() => memory.refresh());
 </script>
@@ -60,8 +77,8 @@ onMounted(() => memory.refresh());
             @click="overlay.create(SettingDataMemory).open()"
           >
             <div class="flex w-full justify-between gap-3">
-              <span class="truncate">Использование памяти</span
-              ><span class="text-muted shrink-0">{{
+              <span class="truncate">Использование памяти</span>
+              <span class="text-muted shrink-0">{{
                 memory.loading
                   ? 'Считаем…'
                   : memory.error
@@ -80,8 +97,8 @@ onMounted(() => memory.refresh());
             @click="overlay.create(SettingDataNetwork).open()"
           >
             <div class="flex w-full justify-between gap-3">
-              <span class="truncate">Использование трафика</span
-              ><span class="text-muted shrink-0">{{ formatStorageBytes(network.totalBytes) }}</span>
+              <span class="truncate">Использование трафика</span>
+              <span class="text-muted shrink-0">{{ formatStorageBytes(network.totalBytes) }}</span>
             </div>
           </UButton>
         </div>
@@ -98,8 +115,8 @@ onMounted(() => memory.refresh());
               @click="overlay.create(SettingDataMobile).open()"
             >
               <div class="flex w-full flex-col items-start">
-                <span>Через мобильную сеть</span
-                ><span class="text-muted text-xs">{{ autoDownload.summary('mobile') }}</span>
+                <span>Через мобильную сеть</span>
+                <span class="text-muted text-xs">{{ autoDownload.summary('mobile') }}</span>
               </div>
             </UButton>
             <UButton
@@ -112,10 +129,20 @@ onMounted(() => memory.refresh());
               @click="overlay.create(SettingDataWifi).open()"
             >
               <div class="flex w-full flex-col items-start">
-                <span>Через Wi-Fi</span
-                ><span class="text-muted text-xs">{{ autoDownload.summary('wifi') }}</span>
+                <span>Через Wi-Fi</span>
+                <span class="text-muted text-xs">{{ autoDownload.summary('wifi') }}</span>
               </div>
             </UButton>
+            <UButton
+              class="justify-start"
+              block
+              color="neutral"
+              size="xl"
+              variant="soft"
+              icon="i-ph-arrow-clockwise-bold"
+              label="Сбросить настройки"
+              @click="requestReset"
+            />
           </div>
         </section>
       </div>

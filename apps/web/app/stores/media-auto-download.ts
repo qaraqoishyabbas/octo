@@ -16,17 +16,18 @@ type ProfilePatch = { enabled?: boolean } & Partial<
 const prefix = 'octo:media-auto-download:v1:';
 const kinds: AutoDownloadKind[] = ['photos', 'videos', 'files'];
 const labels = { photos: 'Фото', videos: 'Видео', files: 'Файлы' };
-const defaults = (limit: number): AutoDownloadSettings => ({
+const defaults = (profile: AutoDownloadProfile): AutoDownloadSettings => ({
   enabled: true,
-  photos: { enabled: true, maxSizeMb: limit },
-  videos: { enabled: true, maxSizeMb: limit },
-  files: { enabled: true, maxSizeMb: limit },
+  photos: { enabled: true, maxSizeMb: profile === 'wifi' ? 15 : 10 },
+  videos: { enabled: true, maxSizeMb: profile === 'wifi' ? 20 : 15 },
+  files: { enabled: false, maxSizeMb: profile === 'wifi' ? 15 : 10 },
 });
+const defaultProfiles = () => ({ mobile: defaults('mobile'), wifi: defaults('wifi') });
 function normalized(
   value: Partial<AutoDownloadSettings> | undefined,
   fallback: AutoDownloadSettings,
 ) {
-  const result = defaults(10);
+  const result = { ...fallback };
   result.enabled = typeof value?.enabled === 'boolean' ? value.enabled : fallback.enabled;
   for (const kind of kinds) {
     const rule = value?.[kind];
@@ -43,7 +44,7 @@ function normalized(
 
 export const useMediaAutoDownloadStore = defineStore('media-auto-download', () => {
   const auth = useAuthStore();
-  const profiles = ref({ mobile: defaults(10), wifi: defaults(15) });
+  const profiles = ref(defaultProfiles());
   const network = useNetwork({ window: typeof window === 'undefined' ? undefined : window });
   const detectedProfile = computed<AutoDownloadProfile | null>(() =>
     network.type.value === 'cellular'
@@ -76,14 +77,14 @@ export const useMediaAutoDownloadStore = defineStore('media-auto-download', () =
       for (const { controller } of pending.values()) controller.abort();
       pending.clear();
       inflight.clear();
-      profiles.value = { mobile: defaults(10), wifi: defaults(15) };
+      profiles.value = defaultProfiles();
       if (!id || typeof window === 'undefined') return;
       try {
         const stored = JSON.parse(window.localStorage.getItem(prefix + id) || 'null');
         if (!stored || typeof stored !== 'object') return;
         profiles.value = {
-          mobile: normalized(stored.profiles?.mobile, defaults(10)),
-          wifi: normalized(stored.profiles?.wifi, defaults(15)),
+          mobile: normalized(stored.profiles?.mobile, defaults('mobile')),
+          wifi: normalized(stored.profiles?.wifi, defaults('wifi')),
         };
       } catch {
         /* Corrupt or inaccessible saved settings fall back to defaults. */
@@ -97,6 +98,11 @@ export const useMediaAutoDownloadStore = defineStore('media-auto-download', () =
     pending.clear();
     inflight.clear();
   });
+
+  function resetProfiles() {
+    profiles.value = defaultProfiles();
+    persist();
+  }
 
   function updateProfile(profile: AutoDownloadProfile, patch: ProfilePatch) {
     const current = profiles.value[profile];
@@ -232,6 +238,7 @@ export const useMediaAutoDownloadStore = defineStore('media-auto-download', () =
     dataSaver,
     isOnline,
     updateProfile,
+    resetProfiles,
     canAutoLoad,
     summary,
     prefetch,
