@@ -301,6 +301,7 @@ const onPaste = (event: ClipboardEvent) => {
     !canWriteMessage.value ||
     messages.sending ||
     isEditingMessage.value ||
+    overlay.overlays.some((item) => item.isOpen && item.component === DialogTextareaUploadModal) ||
     event.defaultPrevented
   ) {
     return;
@@ -704,6 +705,7 @@ const saveActiveDraft = () => {
 };
 
 onMounted(() => {
+  window.addEventListener('paste', onPaste, { capture: true });
   window.addEventListener('beforeunload', saveActiveDraft);
   window.addEventListener('dragenter', onWindowDragEnter);
   window.addEventListener('dragover', preventWindowFileDrop);
@@ -712,6 +714,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  window.removeEventListener('paste', onPaste, { capture: true });
   window.removeEventListener('beforeunload', saveActiveDraft);
   window.removeEventListener('dragenter', onWindowDragEnter);
   window.removeEventListener('dragover', preventWindowFileDrop);
@@ -725,7 +728,6 @@ onBeforeUnmount(() => {
   <div
     class="sticky right-0 bottom-0 left-0 z-20"
     data-dialog-textarea
-    @paste.capture="onPaste"
     @dragenter="onDragEnter"
     @dragover="onDragOver"
     @dragleave="onDragLeave"

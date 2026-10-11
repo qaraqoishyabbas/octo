@@ -206,6 +206,64 @@ function pasteModal(uploadType: 'media' | 'file' = 'media', publicConfig = {}) {
   return ui;
 }
 
+test('dialog paste appends to the open upload modal instead of creating another modal', async () => {
+  const source = readFileSync(
+    new URL('../app/components/feature/dialog/DialogTextarea.vue', import.meta.url),
+    'utf8',
+  );
+  const script = parse(source).descriptor.scriptSetup!.content;
+  const ast = ts.createSourceFile('textarea.ts', script, ts.ScriptTarget.Latest, true);
+  const statement = ast.statements.find(
+    (node) =>
+      ts.isVariableStatement(node) &&
+      node.declarationList.declarations.some((decl) => decl.name.getText(ast) === 'onPaste'),
+  );
+  assert.ok(statement);
+  const code = ts.transpileModule(statement.getText(ast), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+
+  for (const mode of ['media', 'file'] as const) {
+    const ui = pasteModal(mode);
+    const component = {};
+    const activeOverlay = { component, isOpen: true };
+    const opened: File[][] = [];
+    const bindings = {
+      overlay: { overlays: [activeOverlay] },
+      DialogTextareaUploadModal: component,
+      canWriteMessage: ref(true),
+      isEditingMessage: ref(false),
+      messages: { sending: false },
+      isMediaFile: (file: File) => /^(image|video)\//.test(file.type),
+      selectUploads: (files: File[]) => opened.push(files),
+    };
+    const onPaste = new Function(...Object.keys(bindings), `${code}; return onPaste;`)(
+      ...Object.values(bindings),
+    );
+    ui.window.addEventListener('paste', onPaste, { capture: true });
+    await ui.mount();
+
+    const added = new File(['new'], mode === 'media' ? 'next.png' : 'doc.pdf', {
+      type: mode === 'media' ? 'image/png' : 'application/pdf',
+    });
+    const event = pasteEvent([added]);
+    ui.window.dispatchEvent(event);
+    assert.equal(event.defaultPrevented, true);
+    assert.deepEqual(opened, []);
+    assert.deepEqual(
+      ui.state.previews.map((preview: any) => preview.sourceFile),
+      [file, added],
+    );
+    assert.equal(ui.state.messageHtml.value, '<p>Caption</p>');
+
+    ui.unmount();
+    activeOverlay.isOpen = false;
+    ui.window.dispatchEvent(pasteEvent([added]));
+    assert.deepEqual(opened, [[added]]);
+    assert.equal(ui.state.previews.length, 2);
+  }
+});
+
 test('paste into the open media modal appends files while keeping uploads and caption', async () => {
   const ui = pasteModal();
   await ui.mount();

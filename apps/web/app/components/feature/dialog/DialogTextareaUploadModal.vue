@@ -448,7 +448,7 @@ const sendMessage = async () => {
 };
 
 onMounted(async () => {
-  window.addEventListener('paste', onPaste, true);
+  window.addEventListener('paste', onPaste, { capture: true });
   showOversizedFilesToast(initialOversizedFiles);
 
   if (initialSkippedFilesCount > 0) {
@@ -469,7 +469,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener('paste', onPaste, true);
+  window.removeEventListener('paste', onPaste, { capture: true });
   closed = true;
   previews.forEach((preview) => preview.abortController?.abort());
 
