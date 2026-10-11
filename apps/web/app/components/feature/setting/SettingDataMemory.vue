@@ -65,18 +65,19 @@ onMounted(() => memory.refresh());
   <USlideover side="left" title="Использование памяти" description="Кэш приложения на устройстве">
     <template #content>
       <AppBar>
-        <template #left
-          ><UButton
+        <template #left>
+          <UButton
             color="neutral"
             icon="i-ph-x-bold"
             size="xl"
             variant="soft"
             aria-label="Закрыть использование памяти"
             @click="emit('close', false)"
-        /></template>
+          />
+        </template>
         <template #center>Использование памяти</template>
-        <template #right
-          ><UButton
+        <template #right>
+          <UButton
             color="neutral"
             icon="i-ph-arrow-clockwise-bold"
             size="xl"
@@ -85,10 +86,11 @@ onMounted(() => memory.refresh());
             :loading="memory.loading"
             :disabled="memory.clearing"
             @click="memory.refresh()"
-        /></template>
+          />
+        </template>
       </AppBar>
       <div
-        class="min-h-0 flex-1 space-y-4 overflow-y-auto px-2.5 pb-4"
+        class="min-h-0 flex-1 space-y-4 px-2.5 pb-4"
         :aria-busy="memory.loading || memory.clearing"
       >
         <div

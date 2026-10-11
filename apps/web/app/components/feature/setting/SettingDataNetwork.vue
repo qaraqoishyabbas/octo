@@ -43,7 +43,7 @@ const requestReset = () => {
         </template>
         <template #center>Использование трафика</template>
       </AppBar>
-      <div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-2.5 pb-4">
+      <div class="space-y-4 px-2.5 pb-4">
         <section>
           <div class="px-3 py-1 text-base font-bold">Общий расход трафика</div>
           <div class="bg-elevated rounded-md">

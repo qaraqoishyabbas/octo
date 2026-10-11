@@ -32,7 +32,7 @@ onBeforeUnmount(() => invitations.$reset());
 </script>
 
 <template>
-  <div class="bg-default fixed top-0 right-0 bottom-0 left-0 flex flex-1 lg:static">
+  <div class="bg-default fixed inset-0 z-100 lg:relative lg:flex-1">
     <div class="flex min-h-svh flex-1 flex-col">
       <AppBar>
         <template v-slot:left>

@@ -145,7 +145,6 @@ const logout = () => {
         trailing-icon="i-ph-caret-right-bold"
         @click="overlay.create(Device).open()"
       />
-
       <UButton
         class="justify-start"
         block

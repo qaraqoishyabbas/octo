@@ -4,7 +4,6 @@ import {
   SettingDataNetwork,
   SettingDataMobile,
   SettingDataWifi,
-  Theme,
 } from '#components';
 import { formatStorageBytes, formatCacheUsage } from '~/utils/storage-usage';
 
@@ -52,56 +51,48 @@ onMounted(() => memory.refresh());
           />
         </template>
         <template #center>Данные и память</template>
-        <template #right>
-          <UButton
-            color="neutral"
-            icon="i-ph-arrow-clockwise-bold"
-            size="xl"
-            variant="soft"
-            aria-label="Обновить использование памяти"
-            :loading="memory.loading"
-            :disabled="memory.clearing"
-            @click="memory.refresh()"
-          />
-        </template>
       </AppBar>
-      <div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-2.5 pb-4">
-        <div class="bg-elevated rounded-md">
-          <UButton
-            class="justify-start"
-            block
-            size="xl"
-            color="neutral"
-            variant="soft"
-            icon="i-ph-chart-pie-slice-bold"
-            @click="overlay.create(SettingDataMemory).open()"
-          >
-            <div class="flex w-full justify-between gap-3">
-              <span class="truncate">Использование памяти</span>
-              <span class="text-muted shrink-0">{{
-                memory.loading
-                  ? 'Считаем…'
-                  : memory.error
-                    ? 'Недоступно'
-                    : formatCacheUsage(memory.totalUsage)
-              }}</span>
-            </div>
-          </UButton>
-          <UButton
-            class="justify-start"
-            block
-            size="xl"
-            color="neutral"
-            variant="soft"
-            icon="i-ph-chart-donut-bold"
-            @click="overlay.create(SettingDataNetwork).open()"
-          >
-            <div class="flex w-full justify-between gap-3">
-              <span class="truncate">Использование трафика</span>
-              <span class="text-muted shrink-0">{{ formatStorageBytes(network.totalBytes) }}</span>
-            </div>
-          </UButton>
-        </div>
+      <div class="flex-1 space-y-4 px-2.5">
+        <section>
+          <div class="bg-elevated rounded-md">
+            <UButton
+              class="justify-start"
+              block
+              size="xl"
+              color="neutral"
+              variant="soft"
+              icon="i-ph-chart-pie-slice-bold"
+              @click="overlay.create(SettingDataMemory).open()"
+            >
+              <div class="flex w-full justify-between gap-3">
+                <span class="truncate">Использование памяти</span>
+                <span class="text-muted shrink-0">{{
+                  memory.loading
+                    ? 'Считаем…'
+                    : memory.error
+                      ? 'Недоступно'
+                      : formatCacheUsage(memory.totalUsage)
+                }}</span>
+              </div>
+            </UButton>
+            <UButton
+              class="justify-start"
+              block
+              size="xl"
+              color="neutral"
+              variant="soft"
+              icon="i-ph-chart-donut-bold"
+              @click="overlay.create(SettingDataNetwork).open()"
+            >
+              <div class="flex w-full justify-between gap-3">
+                <span class="truncate">Использование трафика</span>
+                <span class="text-muted shrink-0">
+                  {{ formatStorageBytes(network.totalBytes) }}
+                </span>
+              </div>
+            </UButton>
+          </div>
+        </section>
         <section>
           <div class="px-3 py-1 text-base font-bold">Автозагрузка медиа</div>
           <div class="bg-elevated rounded-md">
@@ -116,7 +107,9 @@ onMounted(() => memory.refresh());
             >
               <div class="flex w-full flex-col items-start">
                 <span>Через мобильную сеть</span>
-                <span class="text-muted text-xs">{{ autoDownload.summary('mobile') }}</span>
+                <span class="text-muted text-xs">
+                  {{ autoDownload.summary('mobile') }}
+                </span>
               </div>
             </UButton>
             <UButton
@@ -130,7 +123,9 @@ onMounted(() => memory.refresh());
             >
               <div class="flex w-full flex-col items-start">
                 <span>Через Wi-Fi</span>
-                <span class="text-muted text-xs">{{ autoDownload.summary('wifi') }}</span>
+                <span class="text-muted text-xs">
+                  {{ autoDownload.summary('wifi') }}
+                </span>
               </div>
             </UButton>
             <UButton

@@ -45,7 +45,7 @@ const selectedTrafficLabel = computed(
         </template>
         <template #center>{{ title }}</template>
       </AppBar>
-      <div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-2.5 pb-4">
+      <div class="flex-1 space-y-4 px-2.5">
         <section>
           <div class="bg-elevated rounded-md">
             <UButton
