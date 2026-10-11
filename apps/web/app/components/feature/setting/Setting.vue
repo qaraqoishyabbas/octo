@@ -81,32 +81,23 @@ const logout = () => {
         color="neutral"
         size="xl"
         variant="soft"
-        icon="i-ph-gear-bold"
-        label="Основные"
-        trailing-icon="i-ph-caret-right-bold"
-        @click="overlay.create(SettingGeneral).open()"
-      />
-      <UButton
-        class="justify-start"
-        block
-        color="neutral"
-        size="xl"
-        variant="soft"
         icon="i-ph-bookmark-simple-bold"
         label="Избранное"
         trailing-icon="i-ph-caret-right-bold"
         @click="openSaves"
       />
+    </div>
+    <div class="bg-elevated rounded-md">
       <UButton
         class="justify-start"
         block
         color="neutral"
         size="xl"
         variant="soft"
-        icon="i-ph-devices-bold"
-        label="Устройства"
+        icon="i-ph-gear-bold"
+        label="Основные"
         trailing-icon="i-ph-caret-right-bold"
-        @click="overlay.create(Device).open()"
+        @click="overlay.create(SettingGeneral).open()"
       />
       <UButton
         class="justify-start"
@@ -119,8 +110,6 @@ const logout = () => {
         @click="overlay.create(SettingChatFolders).open()"
         trailing-icon="i-ph-caret-right-bold"
       />
-    </div>
-    <div class="bg-elevated rounded-md">
       <UButton
         class="justify-start"
         block
@@ -138,21 +127,35 @@ const logout = () => {
         color="neutral"
         size="xl"
         variant="soft"
-        icon="i-ph-database-bold"
-        label="Данные и память"
+        icon="i-ph-palette-bold"
+        label="Оформление"
         trailing-icon="i-ph-caret-right-bold"
-        @click="overlay.create(SettingDataStorage).open()"
+        @click="overlay.create(Theme).open()"
       />
+    </div>
+    <div class="bg-elevated rounded-md">
       <UButton
         class="justify-start"
         block
         color="neutral"
         size="xl"
         variant="soft"
-        icon="i-ph-palette-bold"
-        label="Оформление"
+        icon="i-ph-devices-bold"
+        label="Устройства"
         trailing-icon="i-ph-caret-right-bold"
-        @click="overlay.create(Theme).open()"
+        @click="overlay.create(Device).open()"
+      />
+
+      <UButton
+        class="justify-start"
+        block
+        color="neutral"
+        size="xl"
+        variant="soft"
+        icon="i-ph-database-bold"
+        label="Данные и память"
+        trailing-icon="i-ph-caret-right-bold"
+        @click="overlay.create(SettingDataStorage).open()"
       />
       <UButton
         class="justify-start"
