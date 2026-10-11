@@ -10,7 +10,12 @@ test('HTTP transport preserves Headers overrides, bearer authentication and mult
   const code = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  let options: { onRequest: (context: any) => Promise<void> };
+  let options: {
+    onRequest: (context: any) => Promise<void>;
+    onRequestError: (context: any) => Promise<void>;
+    onResponseError: (context: any) => Promise<void>;
+  };
+  const toasts: unknown[] = [];
   new Function(
     'exports',
     'defineNuxtPlugin',
@@ -26,7 +31,7 @@ test('HTTP transport preserves Headers overrides, bearer authentication and mult
   )(
     {},
     (callback: (app: object) => unknown) => callback({}),
-    () => ({ add: () => {} }),
+    () => ({ add: (toast: unknown) => toasts.push(toast) }),
     () => ({ public: { apiBase: 'https://example.test', apiPrefix: '/api/v1' } }),
     () => new URL('https://example.test'),
     () => ({}),
@@ -62,4 +67,21 @@ test('HTTP transport preserves Headers overrides, bearer authentication and mult
   await options!.onRequest(multipart);
   assert.equal(multipart.options.method, 'POST');
   assert.equal(body.get('_method'), 'PUT');
+  let errorHooks = 0;
+  const silentOptions = {
+    silentErrorToast: true,
+    onFetchError: () => {
+      errorHooks++;
+    },
+    onFetchResponseError: () => {
+      errorHooks++;
+    },
+  };
+  await options!.onRequestError({ options: silentOptions, error: new Error('Failed to fetch') });
+  await options!.onResponseError({ options: silentOptions, response: { status: 404 } });
+  assert.equal(errorHooks, 2, 'silent errors still invoke caller hooks');
+  assert.equal(toasts.length, 0, 'background media failures do not emit toasts');
+  await options!.onRequestError({ options: {}, error: new Error('Failed to fetch') });
+  await options!.onResponseError({ options: {}, response: { status: 500 } });
+  assert.equal(toasts.length, 2, 'normal request errors still emit toasts');
 });

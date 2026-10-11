@@ -90,7 +90,12 @@ export default defineNuxtPlugin((nuxtApp) => {
       networkAttempts.delete(context.options);
       await callHooks(context, context.options.onFetchError);
 
-      if (import.meta.server || context.error.name === 'AbortError') return;
+      if (
+        import.meta.server ||
+        context.error.name === 'AbortError' ||
+        context.options.silentErrorToast
+      )
+        return;
 
       toast.add({
         icon: 'i-heroicons-exclamation-circle-solid',
@@ -113,7 +118,11 @@ export default defineNuxtPlugin((nuxtApp) => {
       if (context.response.status === 401) {
         const auth = useAuthStore();
         auth.reset();
-      } else if (context.response.status !== 422 && import.meta.client) {
+      } else if (
+        context.response.status !== 422 &&
+        import.meta.client &&
+        !context.options.silentErrorToast
+      ) {
         toast.add({
           icon: 'i-heroicons-exclamation-circle-solid',
           color: 'error',

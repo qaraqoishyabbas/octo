@@ -194,6 +194,7 @@ export const useMediaAutoDownloadStore = defineStore('media-auto-download', () =
       if (!canAutoLoad(file) || controller.signal.aborted) return false;
       let responseStatus = 200;
       const blob = await $http<Blob>(url, {
+        silentErrorToast: true,
         signal: controller.signal,
         credentials: 'omit',
         responseType: 'blob',

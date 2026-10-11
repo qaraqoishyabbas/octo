@@ -16,6 +16,7 @@ type HttpFetchHook<HttpContext extends HttpFetchContext = HttpFetchContext> = (
 ) => MaybePromise<void>;
 
 interface HttpFetchOptions extends FetchOptions {
+  silentErrorToast?: boolean;
   onFetch?: MaybeArray<HttpFetchHook<HttpFetchContext>>;
   onFetchError?: MaybeArray<
     HttpFetchHook<
