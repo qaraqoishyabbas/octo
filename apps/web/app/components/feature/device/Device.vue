@@ -14,7 +14,7 @@ onMounted(() => {
         <template v-slot:left>
           <UButton
             color="neutral"
-            icon="i-ph-caret-left-bold"
+            icon="i-ph-x-bold"
             size="xl"
             variant="soft"
             @click="emit('close', false)"

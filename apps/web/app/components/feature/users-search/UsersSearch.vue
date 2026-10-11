@@ -31,7 +31,7 @@ onBeforeUnmount(() => {
         <template v-slot:left>
           <UButton
             color="neutral"
-            icon="i-ph-x-bold"
+            icon="i-ph-caret-left-bold"
             size="xl"
             variant="soft"
             @click="emit('close', false)"

@@ -36,7 +36,7 @@ const selectedTrafficLabel = computed(
         <template #left>
           <UButton
             color="neutral"
-            icon="i-ph-arrow-left-bold"
+            icon="i-ph-x-bold"
             size="xl"
             variant="soft"
             aria-label="Назад"
