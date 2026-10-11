@@ -29,6 +29,7 @@ export const useStorageUsageStore = defineStore('storage-usage', () => {
   const clearing = ref(false);
   const error = ref('');
   const cacheSupported = ref(false);
+  const cacheUnavailableReason = ref('');
   let generation = 0;
   const totalBytes = computed(() =>
     Object.values(usage.value).reduce((total, item) => total + (item?.bytes ?? 0), 0),
@@ -48,6 +49,11 @@ export const useStorageUsageStore = defineStore('storage-usage', () => {
     loading.value = true;
     error.value = '';
     cacheSupported.value = 'caches' in window;
+    cacheUnavailableReason.value = cacheSupported.value
+      ? ''
+      : window.isSecureContext === false
+        ? 'Для работы с кэшем откройте приложение через HTTPS или localhost.'
+        : 'Управление кэшем недоступно в этом браузере.';
     if (cacheSupported.value) {
       try {
         await migrateAvatarCache(window.caches);
@@ -115,6 +121,7 @@ export const useStorageUsageStore = defineStore('storage-usage', () => {
     loading,
     clearing,
     cacheSupported,
+    cacheUnavailableReason,
     error,
     refresh,
     clear,

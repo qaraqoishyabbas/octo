@@ -2,6 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createPinia, disposePinia, setActivePinia } from 'pinia';
 import { nextTick, reactive } from 'vue';
+import { readFileSync } from 'node:fs';
+import { parse } from '@vue/compiler-sfc';
+import { compile } from '@vue/compiler-dom';
+import * as Vue from 'vue';
+import { renderToString } from '@vue/server-renderer';
+import { formatStorageBytes, formatCacheUsage } from '../app/utils/storage-usage.ts';
 
 const auth = reactive({ user: { id: 'alice' } });
 const removedDrafts: string[] = [];
@@ -10,6 +16,57 @@ Object.assign(globalThis, {
   useMessagesDraftStore: () => ({ clearUser: (id: string) => removedDrafts.push(id) }),
 });
 const { useStorageUsageStore } = await import('../app/stores/storage-usage.ts');
+
+test('insecure origins explain unavailable cache and the dashboard does not report zero usage', async () => {
+  Object.assign(globalThis, {
+    window: {
+      isSecureContext: false,
+      localStorage: { length: 0, key: () => null, getItem: () => null },
+    },
+  });
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  const memory = useStorageUsageStore();
+  await memory.refresh();
+  assert.match(memory.cacheUnavailableReason, /HTTPS/);
+  assert.match(memory.cacheUnavailableReason, /localhost/);
+  const source = readFileSync(
+    new URL('../app/components/feature/setting/SettingDataStorage.vue', import.meta.url),
+    'utf8',
+  );
+  const render = new Function(
+    'Vue',
+    compile(parse(source).descriptor.template!.content, {
+      mode: 'function',
+      prefixIdentifiers: true,
+    }).code,
+  )(Vue);
+  const app = Vue.createSSRApp({
+    setup: () => ({
+      memory,
+      network: { totalBytes: 0 },
+      autoDownload: { summary: () => '' },
+      formatStorageBytes,
+      formatCacheUsage,
+      requestReset: () => {},
+    }),
+    render,
+  });
+  for (const name of ['USlideover', 'AppBar', 'UButton']) {
+    app.component(name, {
+      setup(_props, { slots }) {
+        return () =>
+          Vue.h(
+            'div',
+            Object.values(slots).flatMap((slot) => slot?.()),
+          );
+      },
+    });
+  }
+  const html = await renderToString(app);
+  assert.match(html, /Использование памяти<\/span>\s*<span[^>]*>Недоступно<\/span>/);
+  disposePinia(pinia);
+});
 
 test('selected cleanup preserves unselected media, API data and drafts', async () => {
   const media = new Map([

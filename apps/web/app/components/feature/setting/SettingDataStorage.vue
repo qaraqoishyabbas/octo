@@ -69,7 +69,7 @@ onMounted(() => memory.refresh());
                 <span class="text-muted shrink-0">{{
                   memory.loading
                     ? 'Считаем…'
-                    : memory.error
+                    : memory.error || !memory.cacheSupported
                       ? 'Недоступно'
                       : formatCacheUsage(memory.totalUsage)
                 }}</span>

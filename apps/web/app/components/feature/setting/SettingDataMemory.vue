@@ -143,7 +143,7 @@ onMounted(() => memory.refresh());
           @click="requestClear"
         />
         <p class="text-muted px-3 text-sm" v-if="!memory.loading && !memory.cacheSupported">
-          Управление кэшем недоступно в этом браузере.
+          {{ memory.cacheUnavailableReason }}
         </p>
         <p class="text-muted px-3 text-sm" v-if="memory.totalUsage.unknownCount">
           Браузер скрывает размер части внешних файлов. Эти файлы сохранены в кэше и доступны для
