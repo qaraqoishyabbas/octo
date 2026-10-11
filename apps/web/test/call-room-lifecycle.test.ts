@@ -1,3 +1,4 @@
+import { CALL_VIDEO_CLASS } from '../app/utils/call-media-layout.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -57,7 +58,10 @@ function setup(options: Record<string, unknown> = {}, exposeInternals = true) {
   const storage = { getItem: () => null, setItem() {} };
   const globals = {
     exports: {},
-    require: () => ({ createLocalId: () => 'local', copyToClipboard: async () => {} }),
+    require: (path: string) =>
+      path.includes('call-media-layout')
+        ? { CALL_VIDEO_CLASS }
+        : { createLocalId: () => 'local', copyToClipboard: async () => {} },
     definePageMeta() {},
     useSeoMeta() {},
     useRoute: () => ({ params: { username: 'room' } }),

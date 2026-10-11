@@ -1,3 +1,4 @@
+import { CALL_VIDEO_CLASS } from '../app/utils/call-media-layout.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -86,7 +87,7 @@ for (const name of ['CallsLobby', 'CallsRoom']) {
     const exports: any = {};
     new Function('exports', 'require', 'toRefs', compile(script.content))(
       exports,
-      () => Vue,
+      (path: string) => (path.includes('call-media-layout') ? { CALL_VIDEO_CLASS } : Vue),
       Vue.toRefs,
     );
     const actions = [

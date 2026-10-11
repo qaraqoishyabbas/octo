@@ -1,3 +1,4 @@
+import { CALL_VIDEO_CLASS } from '~/utils/call-media-layout';
 import { createLocalId } from '~/utils/create-local-id';
 import { copyToClipboard } from '~/utils/copy-to-clipboard';
 import type { MaybeRefOrGetter } from 'vue';
@@ -1212,10 +1213,8 @@ export function useCallRoom(target: MaybeRefOrGetter<string>, options: CallRoomO
     );
   }
 
-  function getParticipantVideoClass(participant: CallParticipant) {
-    const isScreenShare = participant.isLocal ? screenSharing.value : participant.screenSharing;
-
-    return ['h-full rounded-xs object-contain', isScreenShare ? 'w-full' : 'w-auto max-w-none'];
+  function getParticipantVideoClass(_participant: CallParticipant) {
+    return CALL_VIDEO_CLASS;
   }
 
   function toggleParticipantOnMain(participantId: string) {

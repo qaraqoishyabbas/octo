@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CALL_VIDEO_CLASS } from '~/utils/call-media-layout';
 import type { CallRoomController } from '~/composables/useCallRoom';
 
 const props = defineProps<{ call: CallRoomController }>();
@@ -25,8 +26,8 @@ const { localVideoRefSetter, returnToChat, toggleCamera, copyInviteLink } = prop
 </script>
 
 <template>
-  <div class="h-dvh w-full">
-    <div class="bg-default flex h-full w-full flex-col overflow-x-auto">
+  <div class="h-dvh w-full max-w-full min-w-0 overflow-hidden">
+    <div class="bg-default flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
       <AppBar>
         <template v-slot:left>
           <UButton
@@ -39,17 +40,17 @@ const { localVideoRefSetter, returnToChat, toggleCamera, copyInviteLink } = prop
         </template>
         <template v-slot:center>{{ roomTitle }}</template>
       </AppBar>
-      <div class="flex-1 space-y-4 px-2.5 pb-2.5">
+      <div class="min-h-0 min-w-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto px-2.5 pb-2.5">
         <div
-          class="mx-auto grid min-h-0 w-full max-w-6xl content-center gap-2 overflow-y-auto lg:col-span-2 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-4"
+          class="mx-auto grid min-h-0 w-full max-w-6xl min-w-0 grid-cols-1 content-center gap-2 lg:col-span-2 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-4"
         >
-          <div class="space-y-4">
+          <div class="min-w-0 space-y-4">
             <div
-              class="relative grid aspect-video min-h-52 place-items-center overflow-hidden rounded-xs bg-neutral-950 sm:min-h-64"
+              class="relative grid aspect-video w-full min-w-0 place-items-center overflow-hidden rounded-xs bg-neutral-950"
             >
               <video
-                class="h-full w-auto max-w-none rounded-xs object-contain"
                 v-show="cameraEnabled && hasVideo"
+                :class="CALL_VIDEO_CLASS"
                 :ref="localVideoRefSetter"
                 autoplay
                 muted
@@ -90,7 +91,7 @@ const { localVideoRefSetter, returnToChat, toggleCamera, copyInviteLink } = prop
               :description="errorMessage"
             />
           </div>
-          <div class="space-y-4">
+          <div class="min-w-0 space-y-4">
             <section class="px-3 py-1">
               <div class="text-xl font-bold">{{ roomTitle }}</div>
               <div class="text-muted mt-1 text-sm">

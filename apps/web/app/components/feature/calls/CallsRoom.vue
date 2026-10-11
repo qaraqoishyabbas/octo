@@ -47,11 +47,15 @@ const {
 </script>
 
 <template>
-  <div class="bg-default text-default flex h-dvh min-h-dvh flex-col overflow-hidden">
-    <main class="grid h-full min-h-0 w-full flex-1 gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <section class="flex min-h-0 flex-col gap-2 overflow-hidden">
+  <div
+    class="bg-default text-default flex h-dvh min-h-dvh w-full max-w-full min-w-0 flex-col overflow-hidden"
+  >
+    <main
+      class="grid h-full min-h-0 w-full min-w-0 flex-1 grid-cols-1 gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_320px]"
+    >
+      <section class="flex min-h-0 min-w-0 flex-col gap-2 overflow-hidden">
         <div
-          class="relative grid min-h-0 flex-1 rounded-xs ring-0 transition-shadow"
+          class="relative grid min-h-0 min-w-0 flex-1 rounded-xs ring-0 transition-shadow"
           v-if="mainParticipant"
           :key="`main-${mainParticipant.id}`"
           role="button"
@@ -66,7 +70,7 @@ const {
           "
         >
           <div
-            class="relative grid min-h-0 place-items-center overflow-hidden rounded-xs bg-neutral-950"
+            class="relative grid min-h-0 min-w-0 place-items-center overflow-hidden rounded-xs bg-neutral-950"
           >
             <video
               v-if="mainParticipant.isLocal"
@@ -125,7 +129,7 @@ const {
         </div>
 
         <div
-          class="m-1 grid gap-2"
+          class="m-1 grid min-w-0 gap-2"
           v-if="currentParticipantPage.length"
           :class="[
             thumbnailGridClass,
@@ -134,7 +138,7 @@ const {
           ]"
         >
           <div
-            class="relative grid min-h-0 rounded-xs ring-0 transition-shadow"
+            class="relative grid min-h-0 min-w-0 rounded-xs ring-0 transition-shadow"
             v-for="participant in currentParticipantPage"
             :key="`${mainParticipant ? 'thumb' : 'grid'}-${participant.id}`"
             role="button"
@@ -150,7 +154,7 @@ const {
             ]"
           >
             <div
-              class="relative grid min-h-0 place-items-center overflow-hidden rounded-xs bg-neutral-950"
+              class="relative grid min-h-0 min-w-0 place-items-center overflow-hidden rounded-xs bg-neutral-950"
             >
               <video
                 v-if="participant.isLocal"
