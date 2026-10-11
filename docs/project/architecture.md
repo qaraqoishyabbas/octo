@@ -20,7 +20,6 @@ flowchart LR
   O[Вошедший пользователь админки] --> AD[Inertia + Vue]
   AD --> A
   T[Scheduler] --> F
-  W <-->|WebRTC media| W2[Другой клиент встречи]
 ```
 
 Это логические связи, а не утверждение о работающем production. В рекомендуемой существующей схеме Render API/админка/queue/scheduler объединены в контейнере, Reverb — отдельный сервис, Nuxt — static site, БД — PostgreSQL.
@@ -112,7 +111,9 @@ Push — отдельная доставка через очередь, не п�
 
 ### Встречи
 
-Комната адресуется username. Сигналинг использует private call channel, медиа идут между `RTCPeerConnection` клиентов; задан только Google STUN. В клиенте есть состояния соединения, heartbeat, работа с устройствами и screen sharing. Это отдельный функциональный контур с иной моделью доступа и сетевых ошибок; готовность для произвольных внешних сетей не подтверждена.
+Web-страница комнаты теперь является статическим UI-мокапом. Сохранены шаблоны подготовки, сетки встречи, списка участников и подтверждения выхода. Данные демонстрационные; доступа к камере/микрофону/экрану, WebRTC, сигналинга, таймеров, storage и обработчиков действий на странице нет. По умолчанию отображается подготовка; остальные состояния задаются константами для просмотра шаблонов.
+
+Backend authorization для private call channel пока сохранена, но эта страница его не использует. Возвращение реальных звонков потребует отдельного design, модели доступа и проверки внешних сетей.
 
 ## Frontend
 
@@ -131,7 +132,7 @@ flowchart TB
 
 Правила в [web README](../../apps/web/README.md): компоненты владеют presentation/forms/overlays, stores — HTTP и domain state. Composables координируют browser behavior, запросы делегируют stores. Reset/target change инвалидируют устаревшие результаты; uploads/downloads отменяют работу.
 
-История выделена в message store, message-window utils и composables history/scroll/observers. Этот шов стоит сохранить: рендер, scroll intent и загрузка истории решают разные задачи. Calls page пока объединяет большое количество UI и WebRTC orchestration; её выделение в composables имеет смысл при подготовке релиза встреч.
+История выделена в message store, message-window utils и composables history/scroll/observers. Этот шов стоит сохранить: рендер, scroll intent и загрузка истории решают разные задачи. Calls page содержит только UI-шаблоны и демонстрационные данные; будущую orchestration звонков следует проектировать отдельно.
 
 Workbox задаёт NetworkFirst для API (до суток), CacheFirst для avatars/media (до 30 дней), Range handling для media. Такие TTL — технические параметры текущего клиента, не договорённость о хранении приватных данных. Auth reset очищает stores и черновики, но не содержит общей очистки API/media Cache Storage.
 
