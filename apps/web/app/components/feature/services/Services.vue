@@ -20,7 +20,7 @@ const items = ref<ServiceItem[]>([
       const username = String(auth.user?.username || '').trim();
 
       if (username) {
-        navigateTo(`/calls/room/${username}`);
+        navigateTo({ path: '/calls/lobby', query: { username } });
       }
     },
   },
@@ -49,12 +49,7 @@ const items = ref<ServiceItem[]>([
 
   <div class="w-full flex-1">
     <div class="grid grid-cols-4 gap-2">
-      <UButton
-        class="w-full p-0"
-        v-for="link in items"
-        variant="ghost"
-        @click="link.onSelect()"
-      >
+      <UButton class="w-full p-0" v-for="link in items" variant="ghost" @click="link.onSelect()">
         <div class="w-full space-y-2 rounded-md px-2 py-2">
           <div class="bg-primary-400 relative aspect-square w-full rounded-lg">
             <div class="absolute inset-0 flex items-center justify-center p-4">

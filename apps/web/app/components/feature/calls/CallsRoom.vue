@@ -1,123 +1,49 @@
 <script setup lang="ts">
-// Статические данные UI-мокапа.
-type PreviewConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
-type PreviewParticipant = {
-  id: string;
-  name: string;
-  avatar: string;
-  cameraEnabled: boolean;
-  microphoneEnabled: boolean;
-  screenSharing: boolean;
-  hasVideo: boolean;
-  connectionStatus: PreviewConnectionStatus;
-  isSpeaking: boolean;
-  isLocal: boolean;
-};
+import type { CallRoomController } from '~/composables/useCallRoom';
 
-const roomUsername = 'demo';
-
-const roomTitle = 'Командная встреча';
-
-const userFullName = 'Вы';
-
-const userAvatar = '';
-
-const cameraEnabled = true;
-
-const microphoneEnabled = true;
-
-const screenSharing = false;
-
-const hasVideo = false;
-
-const mediaState = 'ready';
-
-const checkingLabel = 'Проверяем устройства...';
-
-const errorMessage = '';
-
-const participantsPanelOpen = false;
-
-const leaveConfirmOpen = false;
-
-const localIsSpeaking = false;
-
-const localConnectionStatus: PreviewConnectionStatus = 'connected';
-
-const connectionStatusConfig = {
-  connecting: { label: 'Подключается', class: 'bg-sky-500' },
-  connected: { label: 'Подключен', class: 'bg-emerald-500' },
-  reconnecting: { label: 'Переподключение', class: 'bg-amber-500' },
-  disconnected: { label: 'Отключен', class: 'bg-neutral-500' },
-};
-
-const localParticipant: PreviewParticipant = {
-  id: 'local',
-  name: userFullName,
-  avatar: '',
+const props = defineProps<{ call: CallRoomController }>();
+const {
+  roomUsername,
+  roomTitle,
+  userFullName,
+  userAvatar,
   cameraEnabled,
   microphoneEnabled,
-  screenSharing: false,
-  hasVideo: false,
-  connectionStatus: 'connected',
-  isSpeaking: false,
-  isLocal: true,
-};
-
-const remoteParticipants: PreviewParticipant[] = [
-  {
-    id: 'preview-1',
-    name: 'Алия',
-    avatar: '',
-    cameraEnabled: false,
-    microphoneEnabled: true,
-    screenSharing: false,
-    hasVideo: false,
-    connectionStatus: 'connected',
-    isSpeaking: true,
-    isLocal: false,
-  },
-  {
-    id: 'preview-2',
-    name: 'Данияр',
-    avatar: '',
-    cameraEnabled: false,
-    microphoneEnabled: false,
-    screenSharing: false,
-    hasVideo: false,
-    connectionStatus: 'connected',
-    isSpeaking: false,
-    isLocal: false,
-  },
-  {
-    id: 'preview-3',
-    name: 'Мария',
-    avatar: '',
-    cameraEnabled: false,
-    microphoneEnabled: true,
-    screenSharing: false,
-    hasVideo: false,
-    connectionStatus: 'reconnecting',
-    isSpeaking: false,
-    isLocal: false,
-  },
-];
-
-const mainParticipant: PreviewParticipant | null = null;
-
-const currentParticipantPage = [localParticipant, ...remoteParticipants];
-
-const participantPages = [currentParticipantPage];
-
-const participantsCount = currentParticipantPage.length;
-
-const participantsCarouselPage = 0;
-
-const hasParticipantPages = false;
-
-const isSingleParticipantGrid = false;
-
-const thumbnailGridClass = 'grid-cols-2';
+  screenSharing,
+  hasVideo,
+  mediaState,
+  checkingLabel,
+  errorMessage,
+  participantsPanelOpen,
+  leaveConfirmOpen,
+  localIsSpeaking,
+  localConnectionStatus,
+  remoteParticipants,
+  mainParticipant,
+  currentParticipantPage,
+  participantPages,
+  participantsCount,
+  participantsCarouselPage,
+  hasParticipantPages,
+  isSingleParticipantGrid,
+  thumbnailGridClass,
+} = toRefs(props.call);
+const {
+  localVideoRefSetter,
+  createRemoteVideoRefSetter,
+  hasParticipantVideo,
+  getParticipantVideoClass,
+  getConnectionStatusClass,
+  getConnectionStatusLabel,
+  toggleParticipantOnMain,
+  showPreviousParticipantsPage,
+  showNextParticipantsPage,
+  toggleCamera,
+  toggleScreenShare,
+  leaveCall,
+  confirmLeaveCall,
+  retryCallMedia,
+} = props.call;
 </script>
 
 <template>
@@ -128,6 +54,11 @@ const thumbnailGridClass = 'grid-cols-2';
           class="relative grid min-h-0 flex-1 rounded-xs ring-0 transition-shadow"
           v-if="mainParticipant"
           :key="`main-${mainParticipant.id}`"
+          role="button"
+          tabindex="0"
+          @click="toggleParticipantOnMain(mainParticipant.id)"
+          @keydown.enter.prevent="toggleParticipantOnMain(mainParticipant.id)"
+          @keydown.space.prevent="toggleParticipantOnMain(mainParticipant.id)"
           :class="
             mainParticipant.isSpeaking
               ? 'ring-primary ring-2 ring-offset-2 ring-offset-(--ui-bg)'
@@ -137,13 +68,30 @@ const thumbnailGridClass = 'grid-cols-2';
           <div
             class="relative grid min-h-0 place-items-center overflow-hidden rounded-xs bg-neutral-950"
           >
+            <video
+              v-if="mainParticipant.isLocal"
+              v-show="hasParticipantVideo(mainParticipant)"
+              :ref="localVideoRefSetter"
+              autoplay
+              muted
+              playsinline
+              :class="getParticipantVideoClass(mainParticipant)"
+            />
+            <video
+              v-else
+              v-show="hasParticipantVideo(mainParticipant)"
+              :ref="createRemoteVideoRefSetter(mainParticipant.id)"
+              autoplay
+              playsinline
+              :class="getParticipantVideoClass(mainParticipant)"
+            />
             <div
               class="flex flex-col items-center gap-3 text-white"
-              v-if="!mainParticipant.hasVideo"
+              v-if="!hasParticipantVideo(mainParticipant)"
             >
               <UAvatar
                 class="size-24 text-3xl"
-                :src="mainParticipant.avatar || undefined"
+                :src="mainParticipant.avatar ? $storage(mainParticipant.avatar) : undefined"
                 :alt="mainParticipant.name"
                 size="3xl"
                 img-class="object-cover"
@@ -171,13 +119,13 @@ const thumbnailGridClass = 'grid-cols-2';
               <div class="flex size-20 items-center justify-center rounded-lg bg-white/10">
                 <UIcon class="size-11" name="i-ph-video-camera-slash-bold" />
               </div>
-              <div class="text-sm">Предпросмотр камеры</div>
+              <div class="text-sm">Камера недоступна</div>
             </div>
           </div>
         </div>
 
         <div
-          class="grid gap-2"
+          class="m-1 grid gap-2"
           v-if="currentParticipantPage.length"
           :class="[
             thumbnailGridClass,
@@ -189,6 +137,11 @@ const thumbnailGridClass = 'grid-cols-2';
             class="relative grid min-h-0 rounded-xs ring-0 transition-shadow"
             v-for="participant in currentParticipantPage"
             :key="`${mainParticipant ? 'thumb' : 'grid'}-${participant.id}`"
+            role="button"
+            tabindex="0"
+            @click="toggleParticipantOnMain(participant.id)"
+            @keydown.enter.prevent="toggleParticipantOnMain(participant.id)"
+            @keydown.space.prevent="toggleParticipantOnMain(participant.id)"
             :class="[
               participant.isSpeaking
                 ? 'ring-primary ring-2 ring-offset-2 ring-offset-(--ui-bg)'
@@ -199,9 +152,29 @@ const thumbnailGridClass = 'grid-cols-2';
             <div
               class="relative grid min-h-0 place-items-center overflow-hidden rounded-xs bg-neutral-950"
             >
-              <div class="flex flex-col items-center gap-3 text-white" v-if="!participant.hasVideo">
+              <video
+                v-if="participant.isLocal"
+                v-show="hasParticipantVideo(participant)"
+                :ref="localVideoRefSetter"
+                autoplay
+                muted
+                playsinline
+                :class="getParticipantVideoClass(participant)"
+              />
+              <video
+                v-else
+                v-show="hasParticipantVideo(participant)"
+                :ref="createRemoteVideoRefSetter(participant.id)"
+                autoplay
+                playsinline
+                :class="getParticipantVideoClass(participant)"
+              />
+              <div
+                class="flex flex-col items-center gap-3 text-white"
+                v-if="!hasParticipantVideo(participant)"
+              >
                 <UAvatar
-                  :src="participant.avatar || undefined"
+                  :src="participant.avatar ? $storage(participant.avatar) : undefined"
                   :alt="participant.name"
                   size="3xl"
                   img-class="object-cover"
@@ -234,7 +207,7 @@ const thumbnailGridClass = 'grid-cols-2';
                 <div class="flex size-20 items-center justify-center rounded-lg bg-white/10">
                   <UIcon class="size-11" name="i-ph-video-camera-slash-bold" />
                 </div>
-                <div class="text-sm">Предпросмотр камеры</div>
+                <div class="text-sm">Камера недоступна</div>
               </div>
             </div>
           </div>
@@ -247,6 +220,7 @@ const thumbnailGridClass = 'grid-cols-2';
             color="neutral"
             variant="soft"
             :disabled="participantsCarouselPage === 0"
+            @click="showPreviousParticipantsPage"
           />
           <UBadge color="neutral" variant="soft" size="md">
             {{ participantsCarouselPage + 1 }} / {{ participantPages.length }}
@@ -257,6 +231,7 @@ const thumbnailGridClass = 'grid-cols-2';
             color="neutral"
             variant="soft"
             :disabled="participantsCarouselPage >= participantPages.length - 1"
+            @click="showNextParticipantsPage"
           />
         </div>
 
@@ -268,28 +243,39 @@ const thumbnailGridClass = 'grid-cols-2';
           :description="errorMessage"
         />
 
+        <UButton
+          v-if="errorMessage"
+          label="Повторить подключение устройств"
+          color="neutral"
+          variant="soft"
+          @click="retryCallMedia"
+        />
         <div class="flex items-center justify-center gap-2">
           <UButton
             :icon="microphoneEnabled ? 'i-ph-microphone-bold' : 'i-ph-microphone-slash-bold'"
             size="xl"
             color="neutral"
             :variant="microphoneEnabled ? 'soft' : 'solid'"
+            @click="microphoneEnabled = !microphoneEnabled"
           />
           <UButton
             :icon="cameraEnabled ? 'i-ph-video-camera-bold' : 'i-ph-video-camera-slash-bold'"
             size="xl"
             color="neutral"
             :variant="cameraEnabled ? 'soft' : 'solid'"
+            @click="toggleCamera"
           />
           <UButton
             :icon="screenSharing ? 'i-ph-monitor-arrow-up-fill' : 'i-ph-monitor-arrow-up-bold'"
             size="xl"
             color="neutral"
             :variant="screenSharing ? 'solid' : 'soft'"
+            @click="toggleScreenShare"
           />
           <UButton
             class="lg:hidden"
             icon="i-ph-users-bold"
+            @click="participantsPanelOpen = true"
             size="xl"
             color="neutral"
             variant="soft"
@@ -298,7 +284,7 @@ const thumbnailGridClass = 'grid-cols-2';
               <UBadge color="neutral" variant="soft" size="sm">{{ participantsCount }}</UBadge>
             </template>
           </UButton>
-          <UButton icon="i-ph-phone-disconnect-bold" size="xl" color="error" />
+          <UButton icon="i-ph-phone-disconnect-bold" size="xl" color="error" @click="leaveCall" />
         </div>
       </section>
 
@@ -317,7 +303,7 @@ const thumbnailGridClass = 'grid-cols-2';
           <Item no-hover no-cursor>
             <template #avatar>
               <UAvatar
-                :src="userAvatar || undefined"
+                :src="userAvatar ? $storage(userAvatar) : undefined"
                 :alt="userFullName"
                 size="3xl"
                 img-class="object-cover"
@@ -332,11 +318,9 @@ const thumbnailGridClass = 'grid-cols-2';
               <span class="flex items-center gap-1.5">
                 <span
                   class="size-1.5 rounded-full"
-                  :class="connectionStatusConfig[localConnectionStatus].class"
+                  :class="getConnectionStatusClass(localConnectionStatus)"
                 />
-                {{
-                  localIsSpeaking ? 'Говорите' : connectionStatusConfig[localConnectionStatus].label
-                }}
+                {{ localIsSpeaking ? 'Говорите' : getConnectionStatusLabel(localConnectionStatus) }}
               </span>
             </template>
 
@@ -357,7 +341,7 @@ const thumbnailGridClass = 'grid-cols-2';
           <Item v-for="participant in remoteParticipants" :key="participant.id" no-hover no-cursor>
             <template #avatar>
               <UAvatar
-                :src="participant.avatar || undefined"
+                :src="participant.avatar ? $storage(participant.avatar) : undefined"
                 :alt="participant.name"
                 size="3xl"
                 img-class="object-cover"
@@ -372,12 +356,12 @@ const thumbnailGridClass = 'grid-cols-2';
               <span class="flex items-center gap-1.5">
                 <span
                   class="size-1.5 rounded-full"
-                  :class="connectionStatusConfig[participant.connectionStatus].class"
+                  :class="getConnectionStatusClass(participant.connectionStatus)"
                 />
                 {{
                   participant.isSpeaking
                     ? 'Говорит'
-                    : connectionStatusConfig[participant.connectionStatus].label
+                    : getConnectionStatusLabel(participant.connectionStatus)
                 }}
               </span>
             </template>
@@ -411,7 +395,7 @@ const thumbnailGridClass = 'grid-cols-2';
       </aside>
 
       <USlideover
-        :open="participantsPanelOpen"
+        v-model:open="participantsPanelOpen"
         side="right"
         title="Участники"
         :description="roomTitle"
@@ -425,7 +409,13 @@ const thumbnailGridClass = 'grid-cols-2';
               </div>
               <div class="flex items-center gap-2">
                 <UBadge color="neutral" variant="soft">{{ participantsCount }}</UBadge>
-                <UButton icon="i-ph-x-bold" size="lg" color="neutral" variant="ghost" />
+                <UButton
+                  icon="i-ph-x-bold"
+                  @click="participantsPanelOpen = false"
+                  size="lg"
+                  color="neutral"
+                  variant="ghost"
+                />
               </div>
             </div>
 
@@ -433,7 +423,7 @@ const thumbnailGridClass = 'grid-cols-2';
               <Item no-hover no-cursor>
                 <template #avatar>
                   <UAvatar
-                    :src="userAvatar || undefined"
+                    :src="userAvatar ? $storage(userAvatar) : undefined"
                     :alt="userFullName"
                     size="3xl"
                     img-class="object-cover"
@@ -448,12 +438,10 @@ const thumbnailGridClass = 'grid-cols-2';
                   <span class="flex items-center gap-1.5">
                     <span
                       class="size-1.5 rounded-full"
-                      :class="connectionStatusConfig[localConnectionStatus].class"
+                      :class="getConnectionStatusClass(localConnectionStatus)"
                     />
                     {{
-                      localIsSpeaking
-                        ? 'Говорите'
-                        : connectionStatusConfig[localConnectionStatus].label
+                      localIsSpeaking ? 'Говорите' : getConnectionStatusLabel(localConnectionStatus)
                     }}
                   </span>
                 </template>
@@ -484,7 +472,7 @@ const thumbnailGridClass = 'grid-cols-2';
               >
                 <template #avatar>
                   <UAvatar
-                    :src="participant.avatar || undefined"
+                    :src="participant.avatar ? $storage(participant.avatar) : undefined"
                     :alt="participant.name"
                     size="3xl"
                     img-class="object-cover"
@@ -499,12 +487,12 @@ const thumbnailGridClass = 'grid-cols-2';
                   <span class="flex items-center gap-1.5">
                     <span
                       class="size-1.5 rounded-full"
-                      :class="connectionStatusConfig[participant.connectionStatus].class"
+                      :class="getConnectionStatusClass(participant.connectionStatus)"
                     />
                     {{
                       participant.isSpeaking
                         ? 'Говорит'
-                        : connectionStatusConfig[participant.connectionStatus].label
+                        : getConnectionStatusLabel(participant.connectionStatus)
                     }}
                   </span>
                 </template>
@@ -541,7 +529,7 @@ const thumbnailGridClass = 'grid-cols-2';
     </main>
 
     <UModal
-      :open="leaveConfirmOpen"
+      v-model:open="leaveConfirmOpen"
       title="Выйти из звонка"
       description="Подтвердите выход из встречи"
     >
@@ -555,8 +543,18 @@ const thumbnailGridClass = 'grid-cols-2';
           </div>
 
           <div class="flex justify-end gap-2">
-            <UButton color="neutral" variant="ghost" label="Отмена" />
-            <UButton color="error" label="Выйти" icon="i-ph-phone-disconnect-bold" />
+            <UButton
+              color="neutral"
+              variant="ghost"
+              label="Отмена"
+              @click="leaveConfirmOpen = false"
+            />
+            <UButton
+              color="error"
+              label="Выйти"
+              @click="confirmLeaveCall"
+              icon="i-ph-phone-disconnect-bold"
+            />
           </div>
         </div>
       </template>
