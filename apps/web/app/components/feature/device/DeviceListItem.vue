@@ -14,7 +14,7 @@ const openItemModal = (item: DeviceSession) => {
 <template>
   <Item @click="openItemModal(item)">
     <template v-slot:avatar>
-      <UAvatar icon="i-ph-devices-bold" size="3xl" />
+      <UAvatar class="bg-accented" icon="i-ph-devices-bold" size="3xl" />
     </template>
     <template v-slot:heading>
       {{

@@ -1,37 +1,21 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui';
-import { DialogPinnedMessagesList, Profile, ProfileAddUsers } from '#components';
-import { copyToClipboard } from '~/utils/copy-to-clipboard';
+import { Profile } from '#components';
 
 const dialog = useDialogStore();
 const dialogs = useDialogsStore();
 const overlay = useOverlay();
 const toast = useToast();
 const { confirm } = useConfirm();
-const requestUrl = useRequestURL();
 const open = ref(false);
 const busyAction = ref<string | null>(null);
 const { withCount } = useInflection();
-const { copyInviteLink } = useInviteLinkClipboard();
 const usersOnline = useUsersOnlineStore();
 const dialogTyping = useDialogTypingStore();
 const isBusy = computed(() => busyAction.value !== null);
 const current = computed(() => dialog.current);
-const permissions = useDialogPermissions(current);
-const currentTarget = computed(() =>
-  String(current.value?.username || current.value?.dialog_id || '').trim(),
-);
 const currentDialogType = computed(() => String(current.value?.type ?? '').toUpperCase());
-const dialogUrl = computed(() =>
-  currentTarget.value ? `${requestUrl.origin}/@${currentTarget.value}` : '',
-);
 const isDialogMember = computed(() => Boolean(current.value?.role));
-const canManageGroupMembers = computed(
-  () => currentDialogType.value === 'G' && permissions.canInviteUsers.value,
-);
-const canManageInviteLink = computed(
-  () => ['G', 'C'].includes(currentDialogType.value) && permissions.canInviteUsers.value,
-);
 const canLeaveDialog = computed(
   () =>
     isDialogMember.value &&
@@ -42,17 +26,6 @@ const usernameText = (username?: string | null) => (username ? `@${username}` : 
 const openProfile = () => {
   overlay.create(Profile).open();
 };
-const openPinnedMessages = () => {
-  overlay.create(DialogPinnedMessagesList).open();
-};
-const openAddUsers = () => {
-  if (!currentTarget.value) return;
-
-  overlay.create(ProfileAddUsers).open({
-    target: currentTarget.value,
-    title: current.value?.title,
-  });
-};
 const runAction = async (key: string, action: () => Promise<void> | void) => {
   if (isBusy.value || !current.value?.dialog_id) return;
 
@@ -61,21 +34,6 @@ const runAction = async (key: string, action: () => Promise<void> | void) => {
     await action();
   } finally {
     busyAction.value = null;
-  }
-};
-const refreshDialog = async () => {
-  if (!current.value?.dialog_id) return;
-
-  await dialogs.refreshById(current.value.dialog_id);
-  await dialog.fetchData(currentTarget.value || current.value.dialog_id);
-};
-const togglePin = async () => {
-  if (!current.value?.dialog_id) return;
-
-  const response = await dialogs.pin(current.value.dialog_id);
-
-  if (typeof response?.pinned === 'boolean') {
-    current.value.pinned = response.pinned;
   }
 };
 const toggleMute = async () => {
@@ -106,39 +64,15 @@ const confirmLeaveDialog = () => {
   const isChannel = current.value?.type === 'C';
 
   confirm({
-    title: isChannel ? 'Выйти из канала?' : 'Выйти из группы?',
+    title: isChannel ? 'Покинуть канал?' : 'Удалить группу из списка и выйти?',
     description: isChannel
       ? 'Вы потеряете доступ к этому каналу.'
       : 'Вы потеряете доступ к этой группе.',
-    confirmButtonText: 'Выйти',
+    confirmButtonText: isChannel ? 'Покинуть канал' : 'Удалить и выйти',
     confirmButtonColor: 'error',
     cancelButtonText: 'Отмена',
     onConfirm: () => runAction('leave', leaveDialog),
   });
-};
-const copyDialogId = async () => {
-  if (!current.value?.dialog_id) return;
-
-  try {
-    await copyToClipboard(current.value.dialog_id);
-    toast.add({
-      title: 'ID диалога скопирован',
-      color: 'success',
-      icon: 'i-ph-check-circle-fill',
-      progress: false,
-      duration: 2000,
-      close: false,
-    });
-  } catch {
-    toast.add({
-      title: 'Не удалось скопировать ID диалога',
-      color: 'error',
-      icon: 'i-ph-warning-circle-fill',
-      progress: false,
-      duration: 2000,
-      close: false,
-    });
-  }
 };
 const dialogAudienceText = computed(() => {
   if (dialog.current?.is_self) {
@@ -177,26 +111,6 @@ const dialogAudienceIsPrimary = computed(() => {
   );
 });
 const items = computed<DropdownMenuItem[][]>(() => {
-  const managementItems: DropdownMenuItem[] = [
-    canManageGroupMembers.value
-      ? {
-          label: 'Добавить участников',
-          icon: 'i-ph-user-plus-bold',
-          disabled: isBusy.value,
-          onSelect: openAddUsers,
-        }
-      : null,
-    canManageInviteLink.value
-      ? {
-          label: 'Ссылка на приглашения',
-          icon: 'i-ph-link-bold',
-          loading: busyAction.value === 'invite-link',
-          disabled: isBusy.value,
-          onSelect: () => runAction('invite-link', () => copyInviteLink(currentTarget.value)),
-        }
-      : null,
-  ].filter(Boolean) as DropdownMenuItem[];
-
   const actionItems: DropdownMenuItem[] = isDialogMember.value
     ? [
         {
@@ -211,7 +125,7 @@ const items = computed<DropdownMenuItem[][]>(() => {
 
   if (canLeaveDialog.value) {
     actionItems.push({
-      label: current.value?.type === 'C' ? 'Выйти из канала' : 'Выйти из группы',
+      label: currentDialogType.value === 'C' ? 'Покинуть канал' : 'Удалить и выйти',
       icon: 'i-ph-sign-out-bold',
       color: 'error',
       loading: busyAction.value === 'leave',
@@ -228,14 +142,7 @@ const items = computed<DropdownMenuItem[][]>(() => {
         disabled: isBusy.value,
         onSelect: openProfile,
       },
-      {
-        label: 'Закрепленные сообщения',
-        icon: 'i-ph-push-pin-bold',
-        disabled: isBusy.value || !isDialogMember.value,
-        onSelect: openPinnedMessages,
-      },
     ],
-    managementItems,
     actionItems,
   ].filter((group) => group.length > 0);
 });
@@ -273,6 +180,32 @@ const items = computed<DropdownMenuItem[][]>(() => {
               </div>
             </div>
           </div>
+        </div>
+        <div class="bg-elevated flex rounded-md p-0.5 shadow-lg">
+          <UButton
+            v-if="currentDialogType !== 'C'"
+            color="neutral"
+            icon="i-ph-magnifying-glass-bold"
+            size="xl"
+            variant="soft"
+            aria-label="Поиск по сообщениям"
+            @click="dialog.openSearch()"
+          />
+          <UDropdownMenu
+            v-model:open="open"
+            :items="items"
+            :content="{ align: 'end', side: 'bottom' }"
+            :ui="{ content: 'w-64' }"
+            size="xl"
+          >
+            <UButton
+              color="neutral"
+              icon="i-ph-dots-three-bold"
+              size="xl"
+              variant="soft"
+              aria-label="Меню диалога"
+            />
+          </UDropdownMenu>
         </div>
       </div>
       <DialogApplicationBarSearch v-model="dialog.searchOpen" />

@@ -38,7 +38,7 @@ const disconnectOthers = () => {
     <section v-if="devices.currentDevice">
       <div class="px-3 py-1 text-base font-bold">Текущее устройство</div>
       <div class="bg-elevated rounded-md">
-        <DeviceItem :item="devices.currentDevice" />
+        <DeviceListItem :item="devices.currentDevice" />
         <UButton
           class="justify-start"
           v-if="devices.otherDevices.length"
@@ -63,7 +63,7 @@ const disconnectOthers = () => {
     <section v-if="devices.otherDevices.length">
       <div class="px-3 py-1 text-base font-bold">Активные сеансы</div>
       <div class="bg-elevated rounded-md">
-        <DeviceItem v-for="item in devices.otherDevices" :key="item.key" :item="item" />
+        <DeviceListItem v-for="item in devices.otherDevices" :key="item.key" :item="item" />
       </div>
     </section>
     <div class="text-error px-3 text-sm" v-if="devices.disconnectError">

@@ -66,7 +66,7 @@ const submit = async () => {
               @click="emit('close', false)"
             />
           </template>
-          <template v-slot:center>{{ isChannel ? 'Изменить канал' : 'Изменить группу' }}</template>
+          <template v-slot:center>Изменить</template>
           <template v-slot:right>
             <UButton
               label="Сохранить"

@@ -12,6 +12,7 @@ export default defineAppConfig({
     },
     avatar: {
       slots: {
+        root: 'bg-accented',
         fallback: 'font-semibold uppercase',
       },
     },
