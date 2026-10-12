@@ -12,13 +12,14 @@ export const useChatFoldersStore = defineStore('chat-folders', () => {
     { writeDefaults: false },
   );
   const folderOptions = computed(() =>
-    dialogs.filterOptions.filter((item) => item.value !== 'all'),
+    dialogs.filterOptions.filter((item) => item.value !== 'all' && item.value !== 'archive'),
   );
   const visibleFilters = computed(() =>
     dialogs.filterOptions.filter(
       (item) =>
-        item.value === 'all' ||
-        (Array.isArray(selectedFolders.value) && selectedFolders.value.includes(item.value)),
+        item.value !== 'archive' &&
+        (item.value === 'all' ||
+          (Array.isArray(selectedFolders.value) && selectedFolders.value.includes(item.value))),
     ),
   );
   const hasFolders = computed(() => visibleFilters.value.length > 1);
@@ -34,7 +35,11 @@ export const useChatFoldersStore = defineStore('chat-folders', () => {
   watch(
     visibleFilters,
     (filters) => {
-      if (!filters.some((item) => item.value === dialogs.activeFilter)) dialogs.setFilter('all');
+      if (
+        dialogs.activeFilter !== 'archive' &&
+        !filters.some((item) => item.value === dialogs.activeFilter)
+      )
+        dialogs.setFilter('all');
     },
     { immediate: true },
   );

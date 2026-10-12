@@ -7,6 +7,9 @@
           <UButton color="neutral" icon="i-ph-caret-left-bold" size="xl" variant="soft" to="/" />
         </div>
         <div class="bg-elevated flex w-full items-center gap-2 rounded-md p-0.5 shadow-lg"></div>
+        <div class="bg-elevated flex rounded-md p-0.5 shadow-lg">
+          <div class="size-10"></div>
+        </div>
       </div>
     </div>
   </div>

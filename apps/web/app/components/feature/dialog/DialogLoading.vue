@@ -21,6 +21,9 @@
             </div>
           </div>
         </div>
+        <div class="bg-elevated flex rounded-md p-0.5 shadow-lg">
+          <USkeleton class="bg-accented size-10" />
+        </div>
       </div>
     </div>
   </div>

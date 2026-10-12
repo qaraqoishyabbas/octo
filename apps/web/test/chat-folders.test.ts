@@ -35,11 +35,11 @@ test('first login has no folders; chosen folders persist for that account only',
   );
   assert.equal(folders.hasFolders, false);
   folders.setFolder('direct', true);
-  folders.setFolder('archive', true);
+  folders.setFolder('groups', true);
   await nextTick();
   assert.deepEqual(
     folders.visibleFilters.map((item) => item.value),
-    ['all', 'direct', 'archive'],
+    ['all', 'direct', 'groups'],
   );
   assert.equal(folders.hasFolders, true);
   auth.user.id = 'bob';
@@ -47,11 +47,11 @@ test('first login has no folders; chosen folders persist for that account only',
   assert.equal(folders.hasFolders, false);
   auth.user.id = 'alice';
   await nextTick();
-  assert.deepEqual(folders.selectedFolders, ['direct', 'archive']);
+  assert.deepEqual(folders.selectedFolders, ['direct', 'groups']);
   disposePinia(pinia);
   const freshPinia = createPinia();
   setActivePinia(freshPinia);
-  assert.deepEqual(useChatFoldersStore().selectedFolders, ['direct', 'archive']);
+  assert.deepEqual(useChatFoldersStore().selectedFolders, ['direct', 'groups']);
   disposePinia(freshPinia);
 });
 
@@ -65,5 +65,36 @@ test('disabling the active folder returns to all chats', async () => {
   folders.setFolder('direct', false);
   await nextTick();
   assert.equal(dialogs.activeFilter, 'all');
+  disposePinia(pinia);
+});
+
+test('saved archive folder is excluded from tabs and folder settings', async () => {
+  storage.clear();
+  dialogs.setFilter('all');
+  storage.set('nuxt-chat-folders:alice', JSON.stringify(['archive', 'direct']));
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  const folders = useChatFoldersStore();
+  await nextTick();
+  assert.deepEqual(
+    folders.visibleFilters.map((item) => item.value),
+    ['all', 'direct'],
+  );
+  assert.equal(
+    folders.folderOptions.some((item) => item.value === 'archive'),
+    false,
+  );
+  disposePinia(pinia);
+});
+
+test('changing folders keeps the separately opened archive active', async () => {
+  storage.clear();
+  dialogs.setFilter('archive');
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  const folders = useChatFoldersStore();
+  folders.setFolder('groups', true);
+  await nextTick();
+  assert.equal(dialogs.activeFilter, 'archive');
   disposePinia(pinia);
 });
