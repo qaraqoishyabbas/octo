@@ -136,6 +136,7 @@ const openReplyTarget = () => {
           <DialogMessagesListItemMedia
             :files="mediaFiles"
             :sender-name="mediaSenderName"
+            :sent-at="message.created_at"
             :has-text-above="senderNameVisible || Boolean(replyTo) || Boolean(message.message)"
             :media-interactive="mediaInteractive"
           />

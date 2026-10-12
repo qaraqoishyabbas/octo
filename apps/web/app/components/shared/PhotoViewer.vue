@@ -6,10 +6,12 @@ const props = withDefaults(
     images?: MessageAttachment[];
     items?: MessageAttachment[];
     senderName?: string | null;
+    sentAt?: string | null;
     downloadable?: boolean;
     rotatable?: boolean;
     titleMode?: 'sender' | 'file';
     showFileSubtitle?: boolean;
+    minimal?: boolean;
   }>(),
   {
     images: () => [],
@@ -19,6 +21,7 @@ const props = withDefaults(
     rotatable: true,
     titleMode: 'sender',
     showFileSubtitle: true,
+    minimal: false,
   },
 );
 
@@ -35,12 +38,24 @@ const { source: videoSource } = useMediaCacheSource(
   computed(() => open.value && !!isSelectedVideo.value),
 );
 const canNavigateMedia = computed(() => mediaItems.value.length > 1);
+const dayjs = useDayjs();
 const viewerTitle = computed(() => {
   if (props.titleMode === 'file') {
     return selectedMedia.value?.original_name || 'Медиа';
   }
 
   return selectedMedia.value?.uploader?.name?.trim() || props.senderName?.trim() || 'Медиа';
+});
+const viewerSubtitle = computed(() => {
+  if (props.titleMode === 'file') {
+    return selectedMedia.value?.original_name || '';
+  }
+
+  const sentAt = props.sentAt || selectedMedia.value?.created_at;
+  if (!sentAt) return '';
+
+  const date = dayjs(sentAt);
+  return date.isValid() ? date.format('DD.MM.YYYY, HH:mm') : '';
 });
 const viewerCounter = computed(() => {
   const total = mediaItems.value.length;
@@ -366,7 +381,7 @@ onBeforeUnmount(() => {
 <template>
   <UModal
     v-model:open="open"
-    :title="selectedMedia?.original_name || 'Медиа'"
+    :title="viewerTitle"
     :ui="{ content: 'm-0 h-dvh max-h-dvh w-screen max-w-none rounded-none sm:rounded-none' }"
     fullscreen
   >
@@ -383,7 +398,7 @@ onBeforeUnmount(() => {
                 @click="closeViewer"
               />
             </div>
-            <div class="bg-elevated flex rounded-md p-0.5 shadow-lg">
+            <div class="bg-elevated flex rounded-md p-0.5 shadow-lg" v-if="!minimal">
               <div class="flex h-[40px] flex-col items-center rounded-md px-4 text-center">
                 <div class="text-md line-clamp-1 space-x-0.5 font-semibold">
                   <span class="truncate wrap-anywhere whitespace-pre-line">
@@ -393,13 +408,16 @@ onBeforeUnmount(() => {
 
                 <div
                   class="text-muted line-clamp-1 truncate text-xs font-normal"
-                  v-if="showFileSubtitle"
+                  v-if="showFileSubtitle && viewerSubtitle"
                 >
-                  {{ selectedMedia?.original_name }}
+                  {{ viewerSubtitle }}
                 </div>
               </div>
             </div>
-            <div class="bg-elevated absolute right-4 flex rounded-md p-0.5 shadow-lg">
+            <div
+              class="bg-elevated absolute right-4 flex rounded-md p-0.5 shadow-lg"
+              v-if="!minimal"
+            >
               <UButton
                 class="hidden md:inline-flex"
                 v-if="isSelectedImage"
@@ -439,13 +457,13 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div class="absolute top-16 left-1/2 z-20 -translate-x-1/2">
+        <div class="absolute top-16 left-1/2 z-20 -translate-x-1/2" v-if="!minimal">
           <UBadge :label="viewerCounter" color="neutral" variant="soft" />
         </div>
 
         <UButton
           class="absolute top-1/2 left-2 z-20 mt-8 hidden -translate-y-1/2 md:inline-flex"
-          v-if="canNavigateMedia"
+          v-if="canNavigateMedia && !minimal"
           @click="navigateMedia(-1)"
           size="xl"
           color="neutral"
@@ -454,7 +472,7 @@ onBeforeUnmount(() => {
         />
         <UButton
           class="absolute top-1/2 right-2 z-20 mt-8 hidden -translate-y-1/2 md:inline-flex"
-          v-if="canNavigateMedia"
+          v-if="canNavigateMedia && !minimal"
           @click="navigateMedia(1)"
           size="xl"
           color="neutral"

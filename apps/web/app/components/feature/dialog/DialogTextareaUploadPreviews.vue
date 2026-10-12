@@ -278,6 +278,7 @@ onBeforeUnmount(() => mediaResizeObserver?.disconnect());
         v-model:index="selectedMediaIndex"
         :items="readyMediaAttachments"
         sender-name="Медиа"
+        title-mode="file"
         :downloadable="false"
       />
     </div>

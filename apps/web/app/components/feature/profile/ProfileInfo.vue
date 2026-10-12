@@ -179,6 +179,7 @@ watch(
       v-model:open="isAvatarViewerOpen"
       v-model:index="avatarViewerIndex"
       :items="avatarViewerItems"
+      minimal
       :downloadable="false"
       :rotatable="false"
       title-mode="file"

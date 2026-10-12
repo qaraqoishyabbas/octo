@@ -146,6 +146,7 @@ watch(
       v-model:open="isViewerOpen"
       v-model:index="selectedMediaIndex"
       :items="mediaFiles"
+      minimal
     />
   </div>
 </template>

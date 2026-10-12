@@ -9,6 +9,7 @@ import {
 const props = defineProps<{
   files?: MessageAttachment[];
   senderName?: string | null;
+  sentAt?: string | null;
   hasTextAbove?: boolean;
   mediaInteractive?: boolean;
 }>();
@@ -163,6 +164,7 @@ onBeforeUnmount(() => {
       v-model:index="selectedMediaIndex"
       :items="mediaFiles"
       :sender-name="senderName"
+      :sent-at="sentAt"
     />
   </div>
 </template>

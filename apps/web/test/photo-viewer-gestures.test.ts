@@ -4,8 +4,9 @@ import test from 'node:test';
 import { parse } from '@vue/compiler-sfc';
 import ts from 'typescript';
 import { computed, ref, watch, nextTick } from 'vue';
+import dayjs from 'dayjs';
 
-function viewer(reducedMotion = false, itemCount = 2, allowAutoLoad = true) {
+function viewer(reducedMotion = false, itemCount = 2, allowAutoLoad = true, metadata = {}) {
   const timers = new Map<number, () => void>();
   let timerId = 0;
   const source = readFileSync(
@@ -32,18 +33,20 @@ function viewer(reducedMotion = false, itemCount = 2, allowAutoLoad = true) {
     'useFileDownload',
     'useMediaAutoDownloadStore',
     'useMediaCacheSource',
+    'useDayjs',
     '$storage',
     'window',
     'setTimeout',
     'clearTimeout',
     `${code}
-    return { onPointerDown, onPointerMove, onPointerUp, zoom, pan, selectedIndex, open, imageTransform, swipeOffset, settling, slideStyle, navigateMedia, closeViewer, onViewerKeydown, adjacentMedia };
+    return { onPointerDown, onPointerMove, onPointerUp, zoom, pan, selectedIndex, open, imageTransform, swipeOffset, settling, slideStyle, navigateMedia, closeViewer, onViewerKeydown, adjacentMedia, viewerTitle, viewerSubtitle };
   `,
   )(
     {},
     () => ({
       items: Array.from({ length: itemCount }, () => ({ mime_type: 'image/jpeg' })),
       images: [],
+      ...metadata,
     }),
     (props: unknown) => props,
     (name: string) => ref(name === 'index' ? 0 : true),
@@ -57,6 +60,7 @@ function viewer(reducedMotion = false, itemCount = 2, allowAutoLoad = true) {
     (_file: unknown, url: { value: string }, enabled: { value: boolean }) => ({
       source: computed(() => (enabled.value ? url.value : undefined)),
     }),
+    () => dayjs,
     (path: string) => path,
     {
       innerWidth: 400,
@@ -266,4 +270,55 @@ test('opening media manually cannot preload gated neighbors until navigation req
   );
   view.closeViewer();
   assert.deepEqual(view.adjacentMedia.value, []);
+});
+
+test('sent media header shows each sender and sending time when navigating profile photos', () => {
+  const view = viewer(false, 2, true, {
+    items: [
+      {
+        mime_type: 'image/jpeg',
+        original_name: 'first.jpg',
+        uploader: { name: 'Алия' },
+        created_at: '2026-10-12T14:30:00',
+      },
+      {
+        mime_type: 'image/jpeg',
+        original_name: 'second.jpg',
+        uploader: { name: 'Бек' },
+        created_at: '2026-10-13T09:05:00',
+      },
+    ],
+  });
+  assert.equal(view.viewerTitle.value, 'Алия');
+  assert.equal(view.viewerSubtitle.value, '12.10.2026, 14:30');
+  view.selectedIndex.value = 1;
+  assert.equal(view.viewerTitle.value, 'Бек');
+  assert.equal(view.viewerSubtitle.value, '13.10.2026, 09:05');
+});
+
+test('dialog media uses message sender and sending time, hiding missing or invalid dates', () => {
+  const view = viewer(false, 1, true, {
+    senderName: 'Вы',
+    sentAt: '2026-10-12T14:30:00',
+    items: [
+      { mime_type: 'image/jpeg', original_name: 'photo.jpg', created_at: '2026-10-12T14:31:00' },
+    ],
+  });
+  assert.equal(view.viewerTitle.value, 'Вы');
+  assert.equal(view.viewerSubtitle.value, '12.10.2026, 14:30');
+  for (const created_at of [undefined, 'invalid']) {
+    const missing = viewer(false, 1, true, {
+      items: [{ mime_type: 'image/jpeg', original_name: 'photo.jpg', created_at }],
+    });
+    assert.equal(missing.viewerSubtitle.value, '');
+  }
+});
+
+test('file mode keeps filenames for unsent previews', () => {
+  const view = viewer(false, 1, true, {
+    titleMode: 'file',
+    items: [{ mime_type: 'image/jpeg', original_name: 'draft.jpg' }],
+  });
+  assert.equal(view.viewerTitle.value, 'draft.jpg');
+  assert.equal(view.viewerSubtitle.value, 'draft.jpg');
 });
